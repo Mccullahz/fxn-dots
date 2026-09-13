@@ -1,0 +1,85 @@
+{
+  "label": "Catppuccin Mocha",
+  "dark": true,
+  "source": "https://catppuccin.com/palette",
+  "background": "#1e1e2e",
+  "foreground": "#cdd6f4",
+  "cursor": "#f5e0dc",
+  "colors": [
+    "#45475a",
+    "#f38ba8",
+    "#a6e3a1",
+    "#f9e2af",
+    "#89b4fa",
+    "#f5c2e7",
+    "#94e2d5",
+    "#bac2de",
+    "#585b70",
+    "#f38ba8",
+    "#a6e3a1",
+    "#f9e2af",
+    "#89b4fa",
+    "#f5c2e7",
+    "#94e2d5",
+    "#a6adc8"
+  ],
+  "roles": {
+    "surface": "#313244",
+    "surface_alt": "#45475a",
+    "muted": "#a6adc8",
+    "faint": "#7f849c",
+    "accent": "#cba6f7",
+    "accent_alt": "#89b4fa",
+    "on_accent": "#1e1e2e",
+    "success": "#a6e3a1",
+    "warning": "#f9e2af",
+    "error": "#f38ba8",
+    "border_inactive": "#45475a"
+  },
+  "wallpapers": {
+    "repo": "zhichaoh/catppuccin-wallpapers",
+    "license": "MIT",
+    "curated": [
+      {
+        "name": "Clearnight",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/Clearnight.jpg"
+      },
+      {
+        "name": "Cloudsnight",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/Cloudsnight.jpg"
+      },
+      {
+        "name": "Rainnight",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/Rainnight.jpg"
+      },
+      {
+        "name": "evening-sky",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/evening-sky.png"
+      },
+      {
+        "name": "shaded_landscape",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/shaded_landscape.png"
+      },
+      {
+        "name": "tropic_island_night",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/tropic_island_night.jpg"
+      },
+      {
+        "name": "cat-waves",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/waves/cat-waves.png"
+      },
+      {
+        "name": "catppuccin_triangle",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/minimalistic/catppuccin_triangle.png"
+      },
+      {
+        "name": "comfy-home",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/misc/comfy-home.png"
+      },
+      {
+        "name": "lonely-fish",
+        "url": "https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/misc/lonely-fish.png"
+      }
+    ]
+  }
+}

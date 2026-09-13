@@ -1,0 +1,84 @@
+{
+  "label": "Nord",
+  "dark": true,
+  "source": "https://www.nordtheme.com/docs/colors-and-palettes",
+  "background": "#2e3440",
+  "foreground": "#d8dee9",
+  "cursor": "#d8dee9",
+  "colors": [
+    "#3b4252",
+    "#bf616a",
+    "#a3be8c",
+    "#ebcb8b",
+    "#81a1c1",
+    "#b48ead",
+    "#88c0d0",
+    "#e5e9f0",
+    "#4c566a",
+    "#bf616a",
+    "#a3be8c",
+    "#ebcb8b",
+    "#81a1c1",
+    "#b48ead",
+    "#8fbcbb",
+    "#eceff4"
+  ],
+  "roles": {
+    "surface": "#3b4252",
+    "surface_alt": "#434c5e",
+    "faint": "#616e88",
+    "accent": "#88c0d0",
+    "accent_alt": "#b48ead",
+    "on_accent": "#2e3440",
+    "success": "#a3be8c",
+    "warning": "#ebcb8b",
+    "error": "#bf616a",
+    "border_inactive": "#4c566a"
+  },
+  "wallpapers": {
+    "repo": "linuxdotexe/nordic-wallpapers",
+    "license": "MIT",
+    "curated": [
+      {
+        "name": "Minimal-Nord",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/Minimal-Nord.png"
+      },
+      {
+        "name": "earth-in-space",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/earth-in-space.png"
+      },
+      {
+        "name": "misty_mountains",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/misty_mountains.jpg"
+      },
+      {
+        "name": "murky_peaks",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/murky_peaks.jpg"
+      },
+      {
+        "name": "nord_alone_tree",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/nord_alone_tree.png"
+      },
+      {
+        "name": "nord_lake",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/nord_lake.png"
+      },
+      {
+        "name": "nord_mountains",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/nord_mountains.png"
+      },
+      {
+        "name": "nord_scenary",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/nord_scenary.png"
+      },
+      {
+        "name": "nord_valley",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/nord_valley.png"
+      },
+      {
+        "name": "waves",
+        "url": "https://raw.githubusercontent.com/linuxdotexe/nordic-wallpapers/master/wallpapers/waves.jpg"
+      }
+    ]
+  }
+}

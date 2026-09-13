@@ -1,0 +1,85 @@
+{
+  "label": "Rosé Pine",
+  "dark": true,
+  "source": "https://rosepinetheme.com/palette",
+  "background": "#191724",
+  "foreground": "#e0def4",
+  "cursor": "#524f67",
+  "colors": [
+    "#26233a",
+    "#eb6f92",
+    "#31748f",
+    "#f6c177",
+    "#9ccfd8",
+    "#c4a7e7",
+    "#ebbcba",
+    "#e0def4",
+    "#6e6a86",
+    "#eb6f92",
+    "#31748f",
+    "#f6c177",
+    "#9ccfd8",
+    "#c4a7e7",
+    "#ebbcba",
+    "#e0def4"
+  ],
+  "roles": {
+    "surface": "#1f1d2e",
+    "surface_alt": "#26233a",
+    "muted": "#908caa",
+    "faint": "#6e6a86",
+    "accent": "#c4a7e7",
+    "accent_alt": "#ebbcba",
+    "on_accent": "#191724",
+    "success": "#9ccfd8",
+    "warning": "#f6c177",
+    "error": "#eb6f92",
+    "border_inactive": "#403d52"
+  },
+  "wallpapers": {
+    "repo": "rose-pine/wallpapers",
+    "license": "CC0-1.0",
+    "curated": [
+      {
+        "name": "contour-line",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/generative/contour-line.png"
+      },
+      {
+        "name": "noise-line",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/generative/noise-line.png"
+      },
+      {
+        "name": "shape",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/generative/shape.png"
+      },
+      {
+        "name": "block-wave-moon",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/illustration/block-wave-moon.png"
+      },
+      {
+        "name": "leafy-moon",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/illustration/leafy-moon.png"
+      },
+      {
+        "name": "something-beautiful-in-nature",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/illustration/something-beautiful-in-nature.jpg"
+      },
+      {
+        "name": "clouds",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/photography/kainoa-kanter/clouds.jpg"
+      },
+      {
+        "name": "moon",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/photography/kainoa-kanter/moon.jpg"
+      },
+      {
+        "name": "river-tree",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/photography/single-celled/river-tree.jpg"
+      },
+      {
+        "name": "snowy-evergreen",
+        "url": "https://raw.githubusercontent.com/rose-pine/wallpapers/main/photography/snowy-evergreen.jpg"
+      }
+    ]
+  }
+}

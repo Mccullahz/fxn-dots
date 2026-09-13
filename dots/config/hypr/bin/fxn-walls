@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+#
+# fxn-walls — wallpapers for each theme.
+#
+#   fxn-walls generate [theme…]   render wallpapers from each theme's palette
+#   fxn-walls fetch [theme…]      download each theme's curated picks, scaled down
+#   fxn-walls list [theme]        print the wallpapers that belong to a theme
+#   fxn-walls themes              print the themes that have wallpapers on disk
+#
+# Wallpapers live in ~/Pictures/wallpapers/<theme>/{curated,generated}.
+#
+# Curated picks are listed by URL in each theme's JSON and downloaded here
+# rather than committed, because most of the source collections are not
+# licensed for redistribution. Everything is scaled to at most 1920px: the
+# source images are 3840×2160, and decoding and palette-extracting those on
+# a Broadwell CPU costs seconds for nothing visible on a 1366×768 panel.
+#
+set -euo pipefail
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}"
+themes_dir="$config/quickshell/fxn/themes"
+settings="$config/quickshell/fxn/settings.json"
+walls="${FXN_WALLPAPERS:-$HOME/Pictures/wallpapers}"
+
+readonly W=1920
+readonly H=1080
+
+die()  { printf 'fxn-walls: %s\n' "$*" >&2; exit 1; }
+say()  { printf '  %s\n' "$*"; }
+need() { local t; for t; do command -v "$t" >/dev/null || die "$t is required"; done; }
+
+theme_names() {
+  local f
+  for f in "$themes_dir"/*.json; do
+    [[ -e $f ]] || continue
+    basename "$f" .json
+  done
+}
+
+# Resolve the colours a generator needs. Named themes pin most roles; where
+# one is missing, fall back to the matching slot of the terminal palette.
+load_theme() {
+  local f="$themes_dir/$1.json"
+  [[ -r $f ]] || die "no theme '$1' in $themes_dir"
+  eval "$(jq -r '
+    def role($k; fallback): (.roles[$k] // fallback);
+    @sh "bg=\(.background)",
+    @sh "surface=\(role("surface"; .colors[0]))",
+    @sh "surface_alt=\(role("surface_alt"; .colors[8]))",
+    @sh "accent=\(role("accent"; .colors[4]))",
+    @sh "accent_alt=\(role("accent_alt"; .colors[5]))",
+    @sh "faint=\(role("faint"; .colors[8]))",
+    @sh "c4=\(.colors[4])",
+    @sh "c5=\(.colors[5])"
+  ' "$f")"
+}
+
+# ─── Generators ─────────────────────────────────────────────
+# Soft shapes are drawn at a quarter of the size, blurred there, and scaled
+# up — the same result as blurring at full size for a fraction of the work.
+
+# Monochrome grain, so smooth gradients don't band on a 6-bit laptop panel.
+grain() {
+  magick "$1" \
+    \( -size "${W}x${H}" xc:gray50 -attenuate 0.35 +noise Gaussian -colorspace Gray \) \
+    -compose SoftLight -composite -quality 90 "$1"
+}
+
+gen_glow() {
+  magick -size 480x270 xc:"$bg" \
+    -fill "$surface_alt"    -draw "circle 400,30 400,230" \
+    -fill "${accent}55"     -draw "circle 70,250 70,370" \
+    -fill "${accent_alt}33" -draw "circle 250,-40 250,60" \
+    -blur 0x55 -resize "${W}x${H}!" "$1"
+  grain "$1"
+}
+
+gen_mesh() {
+  magick -size 480x270 xc:"$bg" \
+    -fill "${accent}40"     -draw "circle 130,90 130,200" \
+    -fill "${accent_alt}33" -draw "circle 360,200 360,300" \
+    -fill "${c4}26"         -draw "circle 390,40 390,130" \
+    -fill "${c5}1f"         -draw "circle 60,240 60,300" \
+    -blur 0x70 -modulate 78 -resize "${W}x${H}!" "$1"
+  grain "$1"
+}
+
+gen_bands() {
+  magick -size "${W}x${H}" xc:"$bg" \
+    -fill "$surface"     -draw "polygon 820,0 $W,0 $W,$H 1240,$H" \
+    -fill "$surface_alt" -draw "polygon 1180,0 $W,0 $W,$H 1600,$H" \
+    -fill "$accent"      -draw "polygon 1140,0 1180,0 1600,$H 1560,$H" \
+    -fill "$accent_alt"  -draw "polygon 1520,0 1532,0 1952,$H 1940,$H" \
+    "$1"
+}
+
+gen_dots() {
+  local draw="" x y step=48
+  for ((y = step / 2; y < H; y += step)); do
+    for ((x = step / 2; x < W; x += step)); do
+      # A diagonal sweep of accent through a field of faint dots.
+      if (( (x + y * 2) % (step * 9) < step )); then
+        draw+="fill '$accent' circle $x,$y $((x + 4)),$y "
+      else
+        draw+="fill '$faint' circle $x,$y $((x + 2)),$y "
+      fi
+    done
+  done
+  magick -size "${W}x${H}" xc:"$bg" -draw "$draw" "$1"
+}
+
+# ─── Commands ───────────────────────────────────────────────
+
+cmd_generate() {
+  need magick jq
+  local -a list=("$@")
+  [[ ${#list[@]} -gt 0 ]] || mapfile -t list < <(theme_names)
+  [[ ${#list[@]} -gt 0 ]] || die "no themes in $themes_dir"
+
+  local t dir kind
+  for t in "${list[@]}"; do
+    load_theme "$t"
+    dir="$walls/$t/generated"
+    mkdir -p "$dir"
+    printf '%s\n' "$t"
+    for kind in glow:jpg mesh:jpg bands:png dots:png; do
+      "gen_${kind%%:*}" "$dir/${kind%%:*}.${kind#*:}"
+      say "${kind%%:*}.${kind#*:}"
+    done
+  done
+}
+
+cmd_fetch() {
+  need curl magick jq
+  local -a list=("$@")
+  [[ ${#list[@]} -gt 0 ]] || mapfile -t list < <(theme_names)
+
+  local t f dir url name dest tmp got
+  for t in "${list[@]}"; do
+    f="$themes_dir/$t.json"
+    [[ -r $f ]] || die "no theme '$t' in $themes_dir"
+    dir="$walls/$t/curated"
+    mkdir -p "$dir"
+    got=0
+    while IFS=$'\t' read -r url name; do
+      [[ -n $url ]] || continue
+      [[ -n $name ]] || name=$(basename "${url%%\?*}")
+      dest="$dir/${name%.*}.jpg"
+      if [[ -s $dest ]]; then
+        got=$((got + 1))
+        continue
+      fi
+      tmp=$(mktemp "$dir/.fetch.XXXXXX")
+      if curl -fsSL --retry 2 --max-time 180 -o "$tmp" "$url" \
+         && magick "$tmp" -strip -resize "${W}x${W}>" -quality 90 "$dest"; then
+        got=$((got + 1))
+      else
+        say "failed: $name"
+        rm -f "$dest"
+      fi
+      rm -f "$tmp"
+    done < <(jq -r '.wallpapers.curated[]? | [.url, (.name // "")] | @tsv' "$f")
+    printf '%s: %s curated\n' "$t" "$got"
+  done
+}
+
+# list [theme] — Auto (the default) lists every wallpaper directory in the
+# shell's settings; a named theme lists only its own.
+cmd_list() {
+  local t=${1:-auto} root
+  local -a roots=()
+  if [[ $t == auto ]]; then
+    if [[ -r $settings ]] && command -v jq >/dev/null; then
+      mapfile -t roots < <(jq -r '.wallpaperDirs[]? // empty' "$settings" 2>/dev/null)
+    fi
+    [[ ${#roots[@]} -gt 0 ]] || roots=("/usr/share/backgrounds" "$walls")
+  else
+    roots=("$walls/$t")
+  fi
+  for root in "${roots[@]}"; do
+    [[ -d $root ]] || continue
+    find "$root" -maxdepth 3 -type f -not -name '.*' \
+      \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \)
+  done | sort -u
+}
+
+cmd_themes() {
+  local d
+  for d in "$walls"/*/; do
+    [[ -d $d ]] || continue
+    basename "$d"
+  done
+}
+
+case "${1:-}" in
+  generate) shift; cmd_generate "$@" ;;
+  fetch)    shift; cmd_fetch "$@" ;;
+  list)     shift; cmd_list "${1:-auto}" ;;
+  themes)   cmd_themes ;;
+  -h|--help|"") sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//;$d' ;;
+  *) die "unknown command '$1' — try --help" ;;
+esac

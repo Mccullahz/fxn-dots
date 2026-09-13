@@ -1,0 +1,14 @@
+# sandbox home — recreated by session/launch.sh
+qsplayground/.sandbox/
+
+# previous configs, used as reference only
+pre-qs
+
+# backups, rotated by promote.sh
+.backups/
+
+# target paths and promotion history
+promote.json
+
+# Generated at runtime by the shell; excluded from promotion too.
+qsplayground/config/quickshell/fxn/settings.json

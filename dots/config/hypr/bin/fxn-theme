@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+"""
+fxn-theme — decide the desktop's named colour roles once, and write them
+everywhere that needs them.
+
+    fxn-theme auto             derive roles from the wallust palette in theme.json
+    fxn-theme apply <name>     apply a hand-made theme from themes/<name>.json
+    fxn-theme roles [file]     print the roles for a theme.json, writing nothing
+    fxn-theme list             list the available themes
+    fxn-theme current          print the active theme's name
+
+The shell used to pick its accent by measuring the palette, Hyprland's
+borders used colour 12, and the lock screen used colour 13: three answers to
+"what is the accent colour", which is why the lock screen never looked like
+the rest of the desktop. Roles are decided here and nowhere else.
+
+Writes, under $XDG_CONFIG_HOME:
+
+    quickshell/fxn/theme.json   palette, "name" and "roles"          the shell
+    hypr/theme/roles.conf       $accent, $fg ... and *_hex twins     Hyprland, hyprlock
+    hypr/theme/colors.conf      $background, $color0..15             named themes only
+    kitty/theme.conf            terminal palette                     named themes only
+
+In auto mode wallust has already written colors.conf and kitty's theme, so
+only roles.conf and theme.json are touched. Every file is replaced
+atomically: Hyprland reloads the moment a sourced file changes and must
+never parse one half written.
+"""
+
+import json
+import math
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+SHELL = CONFIG / "quickshell" / "fxn"
+THEME_JSON = SHELL / "theme.json"
+THEMES_DIR = SHELL / "themes"
+HYPR_THEME = CONFIG / "hypr" / "theme"
+KITTY_THEME = CONFIG / "kitty" / "theme.conf"
+
+
+def die(message):
+    print(f"fxn-theme: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+# ─── Colour maths ──────────────────────────────────────────────
+# Mirrors Config/Theme.qml, so the shell's own fallback — used only when
+# theme.json carries no roles — reaches the same answer as this script.
+
+def rgb(hex_colour):
+    h = hex_colour.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def to_hex(c):
+    return "#" + "".join(f"{round(max(0.0, min(1.0, v)) * 255):02x}" for v in c)
+
+
+def luminance(c):
+    def channel(v):
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = (channel(v) for v in c)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(l1, l2):
+    return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
+
+
+def chroma(c):
+    return max(c) - min(c)
+
+
+def hue(c):
+    r, g, b = c
+    hi, lo = max(c), min(c)
+    d = hi - lo
+    if d == 0:
+        return 0.0
+    if hi == r:
+        h = math.fmod((g - b) / d, 6)
+    elif hi == g:
+        h = (b - r) / d + 2
+    else:
+        h = (r - g) / d + 4
+    h *= 60
+    return h + 360 if h < 0 else h
+
+
+def mix(a, b, t):
+    return tuple(x + (y - x) * t for x, y in zip(a, b))
+
+
+def derive_roles(background, foreground, colours):
+    bg, fg = rgb(background), rgb(foreground)
+    bg_l = luminance(bg)
+    dark = bg_l < 0.4
+
+    # Accent: the most chromatic palette entry that still clears 3:1 against
+    # the background. Chosen by measurement, not by slot — wallust's slots
+    # repeat and carry no readability guarantee.
+    ranked = sorted(
+        ({"hex": c.lower(), "chroma": chroma(rgb(c)), "hue": hue(rgb(c))}
+         for c in colours
+         if contrast(luminance(rgb(c)), bg_l) >= 3.0),
+        key=lambda e: -e["chroma"])
+
+    accent = ranked[0]["hex"] if ranked else ("#89b4fa" if dark else "#1b6fd4")
+
+    # A second accent that reads as a different colour, not a shade.
+    accent_alt = accent
+    if len(ranked) >= 2:
+        accent_alt = ranked[1]["hex"]
+        for entry in ranked[1:]:
+            d = abs(entry["hue"] - ranked[0]["hue"])
+            if d > 180:
+                d = 360 - d
+            if d > 50:
+                accent_alt = entry["hex"]
+                break
+
+    base = rgb(colours[0]) if colours else bg
+    roles = {
+        "bg":              to_hex(bg),
+        "fg":              to_hex(fg),
+        "surface":         to_hex(mix(bg, base, 0.55)),
+        "surface_alt":     to_hex(mix(bg, base, 0.85)),
+        "muted":           to_hex(mix(fg, bg, 0.35)),
+        "faint":           to_hex(mix(fg, bg, 0.60)),
+        "accent":          accent,
+        "accent_alt":      accent_alt,
+        "on_accent":       "#000000" if luminance(rgb(accent)) > 0.45 else "#ffffff",
+        # Semantic colours never come from a palette: a critical state has to
+        # be legible on every one.
+        "success":         "#6bcb8b" if dark else "#2c7a50",
+        "warning":         "#e8b04b" if dark else "#8c5f0c",
+        "error":           "#e0685f" if dark else "#ac382f",
+        "border":          accent,
+        "border_inactive": to_hex(mix(bg, fg, 0.22)),
+    }
+    return roles, dark
+
+
+# ─── Output formats ────────────────────────────────────────────
+
+def write_atomic(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def roles_conf(roles):
+    width = max(len(k) for k in roles) + len("_hex")
+    out = [
+        "# Generated by fxn-theme — do not edit. Rewritten on every theme change.",
+        "#",
+        "# Every role has an rgb() form for Hyprland colours and a bare *_hex twin",
+        "# for Pango markup, where hyprlang needs ## to produce a literal #:",
+        '#     <span foreground="##$muted_hex">',
+        "",
+    ]
+    out += [f"${key:<{width}} = rgb({value.lstrip('#')})" for key, value in roles.items()]
+    out.append("")
+    out += [f"${key + '_hex':<{width}} = {value.lstrip('#')}" for key, value in roles.items()]
+    out += [
+        "",
+        "# Translucent variants for surfaces drawn over the wallpaper.",
+        f"${'surface_glass':<{width}} = rgba({roles['surface'].lstrip('#')}d9)",
+        f"${'scrim':<{width}} = rgba({roles['bg'].lstrip('#')}b3)",
+        "",
+    ]
+    return "\n".join(out)
+
+
+def colors_conf(theme):
+    out = [
+        "# Generated by fxn-theme — do not edit.",
+        f"$background = rgb({theme['background'].lstrip('#')})",
+        f"$foreground = rgb({theme['foreground'].lstrip('#')})",
+    ]
+    out += [f"$color{i:<2} = rgb({c.lstrip('#')})" for i, c in enumerate(theme["colors"])]
+    return "\n".join(out) + "\n"
+
+
+def kitty_conf(theme):
+    out = [
+        "# Generated by fxn-theme",
+        f"background {theme['background']}",
+        f"foreground {theme['foreground']}",
+        f"cursor     {theme.get('cursor', theme['foreground'])}",
+        "",
+    ]
+    out += [f"color{i:<2} {c}" for i, c in enumerate(theme["colors"])]
+    out += [
+        "",
+        f"selection_background {theme['foreground']}",
+        f"selection_foreground {theme['background']}",
+    ]
+    return "\n".join(out) + "\n"
+
+
+# ─── Commands ──────────────────────────────────────────────────
+
+def load(path):
+    try:
+        data = json.loads(Path(path).read_text())
+    except FileNotFoundError:
+        die(f"{path} does not exist")
+    except json.JSONDecodeError as e:
+        die(f"{path} is not valid JSON: {e}")
+    if len(data.get("colors") or []) < 16 or not data.get("background") or not data.get("foreground"):
+        die(f"{path} needs background, foreground and 16 colors")
+    return data
+
+
+def publish(theme, roles, dark, *, full):
+    doc = {
+        "name": theme["name"],
+        "label": theme.get("label", theme["name"]),
+        "dark": dark,
+        "background": theme["background"],
+        "foreground": theme["foreground"],
+        "cursor": theme.get("cursor", theme["foreground"]),
+        "colors": theme["colors"][:16],
+        "roles": roles,
+    }
+    if theme.get("wallpapers"):
+        doc["wallpapers"] = theme["wallpapers"]
+
+    write_atomic(HYPR_THEME / "roles.conf", roles_conf(roles))
+    if full:
+        write_atomic(HYPR_THEME / "colors.conf", colors_conf(doc))
+        write_atomic(KITTY_THEME, kitty_conf(doc))
+    # theme.json last: the shell repaints on it, and by then Hyprland's side
+    # is already in place.
+    write_atomic(THEME_JSON, json.dumps(doc, indent=2) + "\n")
+
+
+def cmd_auto():
+    theme = dict(load(THEME_JSON))
+    theme.update(name="auto", label="Auto")
+    theme.pop("wallpapers", None)
+    roles, dark = derive_roles(theme["background"], theme["foreground"], theme["colors"])
+    publish(theme, roles, dark, full=False)
+    print(f"auto  accent {roles['accent']}")
+
+
+def cmd_apply(name):
+    if name == "auto":
+        return cmd_auto()
+    theme = dict(load(THEMES_DIR / f"{name}.json"))
+    theme["name"] = name
+    roles, dark = derive_roles(theme["background"], theme["foreground"], theme["colors"])
+
+    overrides = {k: v.lower() for k, v in (theme.get("roles") or {}).items()}
+    roles.update(overrides)
+    if "border" not in overrides:
+        roles["border"] = roles["accent"]
+    if "dark" in theme:
+        dark = bool(theme["dark"])
+
+    publish(theme, roles, dark, full=True)
+    print(f"{name}  accent {roles['accent']}")
+
+
+def cmd_roles(path):
+    theme = load(path or THEME_JSON)
+    roles, dark = derive_roles(theme["background"], theme["foreground"], theme["colors"])
+    print(json.dumps({"dark": dark, "roles": roles}, indent=2))
+
+
+def cmd_list():
+    print("auto\tAuto — colours follow the wallpaper")
+    for path in sorted(THEMES_DIR.glob("*.json")):
+        try:
+            label = json.loads(path.read_text()).get("label", path.stem)
+        except (OSError, json.JSONDecodeError):
+            label = f"{path.stem} (unreadable)"
+        print(f"{path.stem}\t{label}")
+
+
+def cmd_current():
+    try:
+        print(json.loads(THEME_JSON.read_text()).get("name", "auto"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        print("auto")
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return
+    command, rest = argv[0], argv[1:]
+    if command == "auto":
+        cmd_auto()
+    elif command == "apply":
+        if len(rest) != 1:
+            die("usage: fxn-theme apply <name>")
+        cmd_apply(rest[0])
+    elif command == "roles":
+        cmd_roles(rest[0] if rest else None)
+    elif command == "list":
+        cmd_list()
+    elif command == "current":
+        cmd_current()
+    else:
+        die(f"unknown command '{command}' — try --help")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

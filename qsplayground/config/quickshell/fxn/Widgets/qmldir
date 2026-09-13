@@ -1,0 +1,14 @@
+module Widgets
+StyledText  1.0 StyledText.qml
+Icon        1.0 Icon.qml
+AppIcon     1.0 AppIcon.qml
+Card        1.0 Card.qml
+StateLayer  1.0 StateLayer.qml
+IconButton  1.0 IconButton.qml
+Toggle      1.0 Toggle.qml
+StyledSlider 1.0 StyledSlider.qml
+Separator   1.0 Separator.qml
+StyledScroll 1.0 StyledScroll.qml
+Tooltip     1.0 Tooltip.qml
+Ring        1.0 Ring.qml
+Waveform    1.0 Waveform.qml

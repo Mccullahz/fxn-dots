@@ -1,0 +1,26 @@
+# ─── wallust ─────────────────────────────────────────────────
+# Generates a 16-colour palette from the current wallpaper and
+# writes it into every consumer. Run by bin/wallpaper.sh; never
+# invoke wallust directly or the two will disagree about which
+# wallpaper is "current".
+
+backend     = "kmeans"      # full | resized | wal | thumb | fastresize | kmeans
+color_space = "labmixed"    # lab | labmixed | lch | lchmixed
+palette     = "dark16"      # see `wallust --help` for the full list
+threshold   = 11            # perceptual distance between adjacent colours
+
+[templates]
+
+hypr.template = 'colors-hyprland.conf'
+hypr.target   = '~/.config/hypr/theme/colors.conf'
+
+# The single source of truth for the Quickshell palette.
+# Config/Theme.qml watches this file and reloads live.
+quickshell.template = 'theme.json'
+quickshell.target   = '~/.config/quickshell/fxn/theme.json'
+
+kitty.template = 'colors-kitty.conf'
+kitty.target   = '~/.config/kitty/theme.conf'
+
+cava.template = 'colors-cava'
+cava.target   = '~/.config/cava/config'

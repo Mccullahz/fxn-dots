@@ -1,0 +1,47 @@
+{
+  "name": "catppuccin-mocha",
+  "label": "Catppuccin Mocha",
+  "dark": true,
+  "background": "#1e1e2e",
+  "foreground": "#cdd6f4",
+  "cursor": "#f5e0dc",
+  "colors": [
+    "#45475a",
+    "#f38ba8",
+    "#a6e3a1",
+    "#f9e2af",
+    "#89b4fa",
+    "#f5c2e7",
+    "#94e2d5",
+    "#bac2de",
+    "#585b70",
+    "#f38ba8",
+    "#a6e3a1",
+    "#f9e2af",
+    "#89b4fa",
+    "#f5c2e7",
+    "#94e2d5",
+    "#a6adc8"
+  ],
+  "roles": {
+    "bg": "#1e1e2e",
+    "fg": "#cdd6f4",
+    "surface": "#313244",
+    "surface_alt": "#45475a",
+    "muted": "#a6adc8",
+    "faint": "#7f849c",
+    "accent": "#cba6f7",
+    "accent_alt": "#89b4fa",
+    "on_accent": "#1e1e2e",
+    "success": "#a6e3a1",
+    "warning": "#f9e2af",
+    "error": "#f38ba8",
+    "border": "#cba6f7",
+    "border_inactive": "#45475a"
+  },
+  "wallpapers": {
+    "repo": "zhichaoh/catppuccin-wallpapers",
+    "license": "MIT",
+    "curated": []
+  }
+}

@@ -1,0 +1,5 @@
+module Config
+singleton Theme    1.0 Theme.qml
+singleton Settings 1.0 Settings.qml
+singleton Paths    1.0 Paths.qml
+singleton Ui       1.0 Ui.qml

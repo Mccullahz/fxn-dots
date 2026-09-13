@@ -1,0 +1,17 @@
+module Services
+singleton Audio         1.0 Audio.qml
+singleton Brightness    1.0 Brightness.qml
+singleton Battery       1.0 Battery.qml
+singleton Network       1.0 Network.qml
+singleton BluetoothSvc  1.0 BluetoothSvc.qml
+singleton Notifications 1.0 Notifications.qml
+singleton Players       1.0 Players.qml
+singleton Clipboard     1.0 Clipboard.qml
+singleton Apps          1.0 Apps.qml
+singleton Wallpapers    1.0 Wallpapers.qml
+singleton Session       1.0 Session.qml
+singleton Themes        1.0 Themes.qml
+singleton SysInfo       1.0 SysInfo.qml
+singleton Emoji         1.0 Emoji.qml
+singleton Calc          1.0 Calc.qml
+singleton Fuzzy         1.0 Fuzzy.qml

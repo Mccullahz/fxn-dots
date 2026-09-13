@@ -1,0 +1,85 @@
+{
+  "label": "Gruvbox",
+  "dark": true,
+  "source": "https://github.com/morhetz/gruvbox",
+  "background": "#282828",
+  "foreground": "#ebdbb2",
+  "cursor": "#ebdbb2",
+  "colors": [
+    "#282828",
+    "#cc241d",
+    "#98971a",
+    "#d79921",
+    "#458588",
+    "#b16286",
+    "#689d6a",
+    "#a89984",
+    "#928374",
+    "#fb4934",
+    "#b8bb26",
+    "#fabd2f",
+    "#83a598",
+    "#d3869b",
+    "#8ec07c",
+    "#ebdbb2"
+  ],
+  "roles": {
+    "surface": "#3c3836",
+    "surface_alt": "#504945",
+    "muted": "#a89984",
+    "faint": "#7c6f64",
+    "accent": "#fe8019",
+    "accent_alt": "#8ec07c",
+    "on_accent": "#282828",
+    "success": "#b8bb26",
+    "warning": "#fabd2f",
+    "error": "#fb4934",
+    "border_inactive": "#504945"
+  },
+  "wallpapers": {
+    "repo": "AngelJumbo/gruvbox-wallpapers",
+    "license": "none — all rights reserved; fetched for personal use, never committed",
+    "curated": [
+      {
+        "name": "great-wave-of-kanagawa-gruvbox",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/minimalistic/great-wave-of-kanagawa-gruvbox.png"
+      },
+      {
+        "name": "gruv-abstract-maze",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/minimalistic/gruv-abstract-maze.png"
+      },
+      {
+        "name": "gruvbox_minimal_space",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/minimalistic/gruvbox_minimal_space.png"
+      },
+      {
+        "name": "sunset",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/minimalistic/sunset.png"
+      },
+      {
+        "name": "moon",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/minimalistic/moon.png"
+      },
+      {
+        "name": "forest_castle",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/mix/forest_castle.png"
+      },
+      {
+        "name": "gruvy-night",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/mix/gruvy-night.jpg"
+      },
+      {
+        "name": "warm_forest",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/mix/warm_forest.png"
+      },
+      {
+        "name": "A_Herefordshire_Lane",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/painting/A_Herefordshire_Lane.png"
+      },
+      {
+        "name": "pilot_mountains_sonntag",
+        "url": "https://raw.githubusercontent.com/AngelJumbo/gruvbox-wallpapers/main/wallpapers/painting/pilot_mountains_sonntag.jpg"
+      }
+    ]
+  }
+}
