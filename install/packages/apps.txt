@@ -1,0 +1,15 @@
+# Everyday apps on the reference desktop.
+firefox
+chromium
+mpv
+mpv-mpris
+loupe
+mousepad
+btop
+nvtop
+cava
+qalculate-gtk
+gnome-system-monitor
+yt-dlp
+pandoc-cli
+inxi

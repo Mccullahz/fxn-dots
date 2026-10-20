@@ -1,0 +1,11 @@
+# Toolchains. install/fxn.sh adds the neovim LSP set on top.
+go
+python
+python-pip
+python-requests
+nodejs
+npm
+typescript
+docker
+docker-compose
+mercurial

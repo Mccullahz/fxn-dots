@@ -1,0 +1,4 @@
+# Heavier, optional apps.
+discord
+blender
+ufw

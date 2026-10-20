@@ -2,22 +2,25 @@
 #
 # fxn — fresh Arch install → this exact dot replica
 #
-#   ./install.sh              install everything
-#   ./install.sh --list       show what would be installed, change nothing
-#   ./install.sh --no-aur     skip AUR packages (drops the pokemon greeting)
-#   ./install.sh --no-chsh    do not change the login shell
+#   install/fxn.sh              install everything
+#   install/fxn.sh --list       show what would be installed, change nothing
+#   install/fxn.sh --no-aur     skip AUR packages (drops the pokemon greeting)
+#   install/fxn.sh --no-chsh    do not change the login shell
 #
 # Idempotent: safe to re-run. Anything already present is left alone,
 # and every config file that exists is backed up before being replaced.
 #
 # Scope today: zsh and neovim. Hyprland, Quickshell and wallust are
-# installed separately via ./promote.sh deploy — see README.
+# installed by install/desktop.sh — see README.
 set -euo pipefail
 
-readonly ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+readonly ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 readonly DOTS="$ROOT/dots/config"
 readonly STAMP=$(date +%Y%m%d-%H%M%S)
 readonly BACKUP="$HOME/.fxn-install-backup-$STAMP"
+readonly -a ARGS=("$@")
+
+source "$ROOT/install/lib.sh"
 
 # ─── packages ────────────────────────────────────────────────
 #
@@ -72,12 +75,11 @@ readonly -a OMZ_PLUGINS=(
 readonly COPILOT_TAG="v1.50.0"
 
 # ─── ui ──────────────────────────────────────────────────────
-c()    { printf '\033[%sm%s\033[0m' "$1" "$2"; }
-info() { printf '%s %s\n' "$(c 36 '▸')" "$*"; }
-ok()   { printf '%s %s\n' "$(c 32 '✓')" "$*"; }
-warn() { printf '%s %s\n' "$(c 33 '!')" "$*"; }
-die()  { printf '%s %s\n' "$(c 31 '✗')" "$*" >&2; exit 1; }
-step() { printf '\n%s\n' "$(c '1;36' "── $* ──")"; }
+# lib.sh's — gum when present. Short names kept for the body below.
+info() { ui_say "$@"; }
+ok()   { ui_ok "$@"; }
+warn() { ui_warn "$@"; }
+step() { ui_step "$@"; }
 
 do_aur=true
 do_chsh=true
@@ -110,7 +112,7 @@ preflight() {
     pacman -Si "$p" >/dev/null 2>&1 || missing+=("$p")
   done
   [[ ${#missing[@]} -eq 0 ]] ||
-    die "these names no longer resolve: ${missing[*]} — update install.sh"
+    die "these names no longer resolve: ${missing[*]} — update install/fxn.sh"
   ok "all $(( ${#PKG_ZSH[@]} + ${#PKG_NVIM[@]} )) official packages resolve"
 }
 
@@ -119,8 +121,8 @@ install_official() {
   step "Official packages"
   # --needed makes this a no-op for anything already present, which is
   # what keeps re-runs cheap.
-  sudo pacman -S --needed --noconfirm "${PKG_ZSH[@]}" "${PKG_NVIM[@]}"
-  ok "zsh and neovim toolchains present"
+  ui_run "pacman — zsh and neovim toolchains" \
+    sudo pacman -S --needed --noconfirm "${PKG_ZSH[@]}" "${PKG_NVIM[@]}"
 }
 
 # ─── AUR ─────────────────────────────────────────────────────
@@ -142,10 +144,10 @@ ensure_aur_helper() {
     info "no AUR helper — building yay from source"
   fi
 
-  sudo pacman -S --needed --noconfirm git base-devel
+  ui_run "yay build deps" sudo pacman -S --needed --noconfirm git base-devel
   local tmp; tmp=$(mktemp -d)
-  git clone --depth 1 https://aur.archlinux.org/yay.git "$tmp/yay"
-  ( cd "$tmp/yay" && makepkg -si --noconfirm )
+  ui_run "fetching yay" git clone --depth 1 https://aur.archlinux.org/yay.git "$tmp/yay"
+  ui_run "building yay" bash -c 'cd "$1" && makepkg -si --noconfirm' _ "$tmp/yay"
   rm -rf "$tmp"
   ok "yay built against pacman $(pacman -Q pacman | awk '{print $2}')"
 }
@@ -158,8 +160,7 @@ install_aur() {
     return
   fi
   ensure_aur_helper
-  yay -S --needed --noconfirm "${PKG_AUR[@]}"
-  ok "oh-my-posh and pokemon-colorscripts present"
+  ui_run "AUR — ${PKG_AUR[*]}" yay -S --needed --noconfirm "${PKG_AUR[@]}"
 }
 
 # ─── backup helper ───────────────────────────────────────────
@@ -185,9 +186,8 @@ install_omz() {
   else
     # The installer would otherwise launch a subshell and rewrite
     # .zshrc; both flags below stop it doing either.
-    RUNZSH=no KEEP_ZSHRC=yes \
+    ui_run "installing oh-my-zsh" env RUNZSH=no KEEP_ZSHRC=yes \
       sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    ok "installed"
   fi
 
   local custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
@@ -198,8 +198,7 @@ install_omz() {
     if [[ -d $dest ]]; then
       ok "plugin $name already present"
     else
-      git clone --depth 1 "$url" "$dest"
-      ok "plugin $name cloned"
+      ui_run "plugin $name" git clone --depth 1 "$url" "$dest"
     fi
   done
 }
@@ -256,8 +255,7 @@ install_nvim_plugins() {
   if [[ -d $packer ]]; then
     ok "packer already present"
   else
-    git clone --depth 1 https://github.com/wbthomason/packer.nvim "$packer"
-    ok "packer cloned"
+    ui_run "packer" git clone --depth 1 https://github.com/wbthomason/packer.nvim "$packer"
   fi
 
   # copilot.vim is a pack/ plugin, not a packer one — init.lua does not
@@ -267,18 +265,16 @@ install_nvim_plugins() {
   if [[ -d $copilot ]]; then
     ok "copilot.vim already present"
   else
-    git clone --depth 1 --branch "$COPILOT_TAG" \
+    ui_run "copilot.vim $COPILOT_TAG" git clone --depth 1 --branch "$COPILOT_TAG" \
       https://github.com/github/copilot.vim.git "$copilot"
-    ok "copilot.vim $COPILOT_TAG cloned"
   fi
 
-  info "syncing packer plugins (headless — this takes a minute)"
-  nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync' || true
-
-  info "installing LSP servers via Mason"
-  nvim --headless -c 'MasonInstall lua-language-server gopls clangd typescript-language-server marksman' -c qall || true
-
-  ok "plugins synced"
+  # Both || true: a plugin that fails to fetch should not fail the
+  # install — :PackerSync and :Mason retry it from inside nvim.
+  ui_run "packer plugins (headless — a minute)" \
+    nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync' || true
+  ui_run "LSP servers via Mason" \
+    nvim --headless -c 'MasonInstall lua-language-server gopls clangd typescript-language-server marksman' -c qall || true
 }
 
 post_notes() {
@@ -286,7 +282,7 @@ post_notes() {
   ok "zsh and neovim are installed and configured"
   echo
   info "What is NOT covered by this script:"
-  echo "    · Hyprland / Quickshell / wallust — use ./promote.sh deploy"
+  echo "    · Hyprland / Quickshell / wallust — use install/desktop.sh"
   echo "    · ~/.config/hypr/conf.d/10-monitors.conf is machine-specific"
   echo "      and intentionally never deployed; write your layout there"
   echo "    · Copilot needs ':Copilot setup' once, interactively"
@@ -320,7 +316,8 @@ show_list() {
 }
 
 main() {
-  printf '\n%s\n' "$(c '1;35' '  fxn — zsh + neovim')"
+  $list_only || ensure_gum "${ARGS[@]}"
+  ui_title "fxn — zsh + neovim"
 
   if $list_only; then
     show_list
@@ -328,6 +325,7 @@ main() {
   fi
 
   preflight
+  sudo_keepalive
   install_official
   install_aur
   install_omz

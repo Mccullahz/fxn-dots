@@ -1,0 +1,66 @@
+# The Hyprland + Quickshell desktop the dots configure.
+# Every name here is something the config calls by name.
+
+# compositor and session
+hyprland
+hypridle
+hyprlock
+hyprpolkitagent
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+xdg-user-dirs
+qt5-wayland
+qt6-wayland
+qt6-5compat
+qt5ct
+qt6ct
+kvantum
+nwg-look
+sddm
+
+# the shell (qs -c fxn) and what its services shell out to
+quickshell
+awww                # wallpaper daemon; wallpaper.sh accepts swww or awww
+imagemagick         # magick — wallpaper thumbnails
+libqalculate        # qalc — launcher calculator
+libnotify           # notify-send
+cliphist
+wl-clipboard
+brightnessctl
+grim
+slurp
+swappy
+python
+util-linux          # rfkill — airplane-mode.sh
+
+# audio, bluetooth, network
+pipewire
+pipewire-alsa
+pipewire-audio
+pipewire-pulse
+wireplumber
+pavucontrol
+pamixer
+bluez
+bluez-utils
+blueman
+network-manager-applet
+
+# terminal, files, fonts
+kitty
+thunar
+thunar-archive-plugin
+thunar-volman
+tumbler
+ffmpegthumbnailer
+gvfs
+gvfs-mtp
+xarchiver
+ttf-jetbrains-mono-nerd
+ttf-jetbrains-mono
+ttf-fira-code
+ttf-fantasque-nerd
+noto-fonts
+noto-fonts-emoji
+otf-font-awesome
+adobe-source-code-pro-fonts

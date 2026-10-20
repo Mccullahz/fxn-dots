@@ -1,0 +1,30 @@
+# pacstrapped onto every machine by install/arch.sh.
+# The CPU microcode package is added on top, by vendor.
+base
+base-devel
+linux
+linux-firmware
+linux-headers
+sof-firmware
+grub
+efibootmgr
+os-prober
+sudo
+networkmanager
+reflector
+pacman-contrib
+git
+curl
+wget
+rsync
+jq
+gum
+zsh
+zsh-completions
+neovim
+vim
+nano
+less
+man-db
+unzip
+lzip

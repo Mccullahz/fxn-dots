@@ -7,6 +7,7 @@
 #
 #   stage    promote the playground to dots/, replacing the backup
 #   deploy   promote dots/ onto the system, replacing the backup
+#            --yes: no prompts, default target paths (used by install/)
 #   init     (re)run the target path detection wizard
 #   status   show what differs at each stage
 #   diff     show the actual diff for one stage
@@ -31,13 +32,18 @@ readonly -a PRESERVE=(
 # these back out of the live target, so a deploy cannot delete them.
 #   quickshell/fxn/settings.json  — written by the running shell, derived
 #                                   entirely from defaults in QML.
+#   kitty/theme.conf              — the terminal palette, rewritten by
+#                                   wallust and fxn-theme on every theme
+#                                   change. Shipping it would reset the
+#                                   colours on every deploy.
 #   nvim/pack, nvim/plugin        — packer and the pack/ plugins, installed
-#                                   by install.sh. Without these two the
+#                                   by install/fxn.sh. Without these two the
 #                                   nvim component ships a lone init.lua and
 #                                   a deploy would wipe copilot.vim (45M)
 #                                   and plugin/packer_compiled.lua.
 readonly -a GENERATED=(
   "quickshell/fxn/settings.json"
+  "kitty/theme.conf"
   "nvim/pack"
   "nvim/plugin"
 )
@@ -48,6 +54,9 @@ readonly -a GENERATED=(
 
 HAS_GUM=false
 command -v gum >/dev/null && HAS_GUM=true
+
+# set by `deploy --yes`: every confirm passes, unset targets take defaults.
+ASSUME_YES=false
 
 c_accent=212; c_dim=245; c_ok=42; c_warn=214; c_err=196
 
@@ -69,6 +78,7 @@ die() { ui_err "$*"; exit 1; }
 
 ui_confirm() {
   local prompt=$1
+  $ASSUME_YES && return 0
   if $HAS_GUM; then
     gum confirm "$prompt"
   else
@@ -134,8 +144,9 @@ readonly -a COMPONENTS=(
   "wallust|wallust|dir|Colour generation templates"
   "zsh|zsh/zshrc|file|Shell config (deploys to ~/.zshrc)"
   "ohmyposh|ohmyposh|dir|Prompt theme (zen.toml; sourced by zshrc)"
-  "nvim|nvim|dir|Neovim config (init.lua; plugins are installed by install.sh)"
+  "nvim|nvim|dir|Neovim config (init.lua; plugins are installed by install/fxn.sh)"
   "fastfetch|fastfetch|dir|Fastfetch configs used by the zsh greeting"
+  "kitty|kitty|dir|Kitty terminal (theme.conf is generated, never shipped)"
 )
 
 state_init() {
@@ -221,7 +232,14 @@ ensure_targets() {
     [[ -n $(state_get_target "$name") ]] || missing=true
   done
 
-  if $missing; then
+  if $missing && $ASSUME_YES; then
+    for entry in "${COMPONENTS[@]}"; do
+      IFS='|' read -r name path _ _ <<< "$entry"
+      [[ -n $(state_get_target "$name") ]] ||
+        state_set_target "$name" "$(default_target "$name" "$path")"
+    done
+    ui_ok "target paths set to the defaults"
+  elif $missing; then
     ui_warn "Target paths have not been configured yet."
     cmd_init
   fi
@@ -775,7 +793,7 @@ cmd_status() {
   echo
   local last
   last=$(jq -r '.history[0] // empty | "\(.stage) at \(.when)"' "$STATE")
-  [[ -n $last ]] && ui_say "Last run: $last"
+  if [[ -n $last ]]; then ui_say "Last run: $last"; fi
 }
 
 cmd_diff() {
@@ -936,7 +954,7 @@ cmd_menu() {
 
 case "${1:-menu}" in
   stage)    cmd_stage ;;
-  deploy)   cmd_deploy ;;
+  deploy)   [[ ${2:-} == --yes ]] && ASSUME_YES=true; cmd_deploy ;;
   init)     cmd_init ;;
   status)   cmd_status ;;
   diff)     shift; cmd_diff "${1:-}" ;;

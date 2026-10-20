@@ -1,0 +1,7 @@
+# NVIDIA (Turing / RTX 20xx and newer). Selected automatically when
+# install/arch.sh sees an NVIDIA GPU. Older cards need nvidia-580xx-dkms
+# from the AUR instead — drop this group and install it by hand.
+nvidia-open
+nvidia-utils
+nvidia-settings
+libva-nvidia-driver
