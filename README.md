@@ -6,7 +6,33 @@ A Hyprland config built with [Quickshell](https://quickshell.org).
 qsplayground/  edit, test, break things
 dots/          the promoted, known-good copy
 promote.sh     moves changes between playground and official dots, and onto the system
+install.sh     fresh Arch install → zsh + neovim, ready to go
 ```
+
+## fresh install
+
+```sh
+./install.sh --list     # show everything it would install, change nothing
+./install.sh            # do it
+```
+
+Covers **zsh and neovim** end to end: packages, oh-my-zsh and its plugins,
+oh-my-posh, packer, copilot.vim, the LSP servers, and the config files
+themselves (`~/.zshrc`, `ohmyposh/zen.toml`, `fastfetch/`, `nvim/init.lua`).
+
+It is idempotent — re-running is safe, `--needed` skips what is already
+installed, and any config file it would overwrite is copied to
+`~/.fxn-install-backup-<timestamp>/` first.
+
+| flag | effect |
+|---|---|
+| `--list`    | print the plan and exit |
+| `--no-aur`  | skip AUR packages (you lose the oh-my-posh prompt) |
+| `--no-chsh` | leave the login shell alone |
+
+The desktop half — Hyprland, Quickshell, wallust — is **not** installed by
+`install.sh`. Install those packages (see [Requirements](#requirements)) and
+then run `./promote.sh deploy`.
 
 ## pipeline
 
@@ -91,3 +117,56 @@ sudo pacman -S --needed quickshell gum swww rsync jq \
 ```
 
 `qalc` (from `libqalculate`) is optional
+
+The zsh and neovim packages are handled by `./install.sh` instead — run
+`./install.sh --list` to see that list.
+
+### what PRESERVE and GENERATED actually do
+
+Both lists live at the top of `promote.sh`. The semantics are narrower than
+"never touched", so it is worth being precise:
+
+| | `stage` (playground → dots) | `deploy` (dots → system) |
+|---|---|---|
+| **PRESERVE** | **synced normally** — `cmd_stage` passes `preserve=0` | the **live** file wins if it exists; otherwise `dots/` seeds it |
+| **GENERATED** | excluded both ways | carried back out of the live target, never deleted |
+
+So a PRESERVE file is not fenced off from the repo at all. It is only
+protected from being *overwritten* on a machine that already has one — which
+is what makes `dots/` the seed for a fresh install, and why the copy in
+`dots/` still has to be correct.
+
+`PRESERVE` holds `hypr/conf.d/10-monitors.conf` (per-machine displays) and the
+files wallust rewrites on every theme change: `hypr/theme/colors.conf`,
+`hypr/theme/roles.conf`, `quickshell/fxn/theme.json`.
+
+`GENERATED` holds `quickshell/fxn/settings.json` plus `nvim/pack` and
+`nvim/plugin` — the plugin trees `install.sh` and packer create. Without those
+two entries the `nvim` component ships a lone `init.lua` and a deploy would
+delete copilot.vim (45M) along with `plugin/packer_compiled.lua`.
+
+### monitors
+
+Write your display layout in `conf.d/10-monitors.conf` by hand. **nwg-displays
+saves to `~/.config/hypr/monitors.conf`, which this config never sources** —
+its output is silently ignored, so the GUI appears to work and changes nothing.
+Use it to read coordinates off, then copy them in yourself.
+
+Remember that a rotated output swaps its logical dimensions: a 1920x1080 panel
+at `transform, 1` occupies 1080x1920, and every neighbouring position has to be
+computed against that.
+
+### not managed by promote.sh
+
+Two of wallust's four targets belong to apps this repo does not manage, and
+they are deliberately absent from the config tree:
+
+| file | owner |
+|---|---|
+| `~/.config/cava/config` | wallust (`wallust.toml`, `cava.target`) |
+| `~/.config/kitty/theme.conf` | wallust (`wallust.toml`, `kitty.target`) |
+
+wallust rewrites both on every theme change, so there is nothing here to
+promote. Do **not** add either as a component without first putting the
+generated file in `GENERATED` — a deploy would otherwise overwrite the live
+colours with a stale copy.

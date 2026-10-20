@@ -27,9 +27,19 @@ readonly -a PRESERVE=(
   "quickshell/fxn/theme.json"
 )
 
-# written by the running shell, derived entirely from defaults in QML.
+# Written at runtime and never shipped from the repo: carry_over copies
+# these back out of the live target, so a deploy cannot delete them.
+#   quickshell/fxn/settings.json  — written by the running shell, derived
+#                                   entirely from defaults in QML.
+#   nvim/pack, nvim/plugin        — packer and the pack/ plugins, installed
+#                                   by install.sh. Without these two the
+#                                   nvim component ships a lone init.lua and
+#                                   a deploy would wipe copilot.vim (45M)
+#                                   and plugin/packer_compiled.lua.
 readonly -a GENERATED=(
   "quickshell/fxn/settings.json"
+  "nvim/pack"
+  "nvim/plugin"
 )
 
 # ─────────────────────────────────────────────────────────────
@@ -123,6 +133,9 @@ readonly -a COMPONENTS=(
   "quickshell|quickshell|dir|The Quickshell desktop shell"
   "wallust|wallust|dir|Colour generation templates"
   "zsh|zsh/zshrc|file|Shell config (deploys to ~/.zshrc)"
+  "ohmyposh|ohmyposh|dir|Prompt theme (zen.toml; sourced by zshrc)"
+  "nvim|nvim|dir|Neovim config (init.lua; plugins are installed by install.sh)"
+  "fastfetch|fastfetch|dir|Fastfetch configs used by the zsh greeting"
 )
 
 state_init() {

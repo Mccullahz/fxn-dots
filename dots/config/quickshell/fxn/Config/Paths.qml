@@ -4,7 +4,7 @@ import QtQuick
 import Quickshell
 
 /*!
-    fs locations the shell reads and writes.
+    fs locations the shell reads and writes
 */
 Singleton {
     id: root
