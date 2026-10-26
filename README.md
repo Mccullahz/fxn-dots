@@ -6,33 +6,124 @@ A Hyprland config built with [Quickshell](https://quickshell.org).
 qsplayground/  edit, test, break things
 dots/          the promoted, known-good copy
 promote.sh     moves changes between playground and official dots, and onto the system
-install.sh     fresh Arch install → zsh + neovim, ready to go
+install/       installers: bare metal → Arch → this desktop
 ```
 
-## fresh install
+## install
+
+```
+install/
+  usb.sh          build an Arch live ISO with this repo + gum baked in
+  bootstrap.sh    on any live ISO: git + gum, fetch/update the repo, run arch.sh
+  arch.sh         from the live USB: disk → pacstrap → chroot → dots
+  arch-chroot.sh  arch.sh's second half, run inside the new system
+  fxn.sh          zsh + neovim
+  desktop.sh      Hyprland + Quickshell desktop, services, deploy
+  lib.sh          shared gum / plain-prompt UI
+  packages/       package lists by group
+```
+
+### a new machine, from a USB stick
+
+Two ways onto install media. Both end in the same `install/bootstrap.sh`
+→ `install/arch.sh`, and both need the network (pacstrap downloads every
+package either way).
+
+**Recommended — the fxn ISO.** Build once, keep the stick:
 
 ```sh
-./install.sh --list     # show everything it would install, change nothing
-./install.sh            # do it
+install/usb.sh                     # → install/out/fxn-arch-<date>.iso
+install/usb.sh --write /dev/sdX --iso install/out/fxn-arch-<date>.iso
 ```
 
-Covers **zsh and neovim** end to end: packages, oh-my-zsh and its plugins,
-oh-my-posh, packer, copilot.vim, the LSP servers, and the config files
-themselves (`~/.zshrc`, `ohmyposh/zen.toml`, `fastfetch/`, `nvim/init.lua`).
+It is the stock Arch `releng` profile plus gum, git, pciutils and this repo,
+with a login banner telling you what to run. At install time the baked repo
+is fast-forwarded to GitHub when it can be, so the stick does not go stale
+with every commit — rebuild only when you want a newer Arch base. The ISO
+also works from a Ventoy stick: copy the file over.
 
-It is idempotent — re-running is safe, `--needed` skips what is already
-installed, and any config file it would overwrite is copied to
-`~/.fxn-install-backup-<timestamp>/` first.
+**No build — any Arch ISO.** Boot the stock image (or Ventoy), get online, then:
 
-| flag | effect |
+```sh
+bash <(curl -fsSL https://raw.githubusercontent.com/mccullahz/fxn-dots/main/install/bootstrap.sh)
+```
+
+This installs git and gum, clones `main`, and starts the installer.
+
+Either way: boot **in UEFI mode**, get online (wired just works; wifi is
+`iwctl station wlan0 connect <SSID>`), then on the fxn ISO:
+
+```sh
+fxn-install              # or: fxn-install --dry-run   ·   --baked: skip the GitHub update
+```
+
+The whole run is in gum. Any script that starts without it installs gum and
+restarts itself, so even the first prompt is styled. Long steps (pacstrap,
+pacman, AUR builds, plugin syncs) run behind a spinner, with their output in
+`~/.cache/fxn/install.log`. On failure the last lines are printed, and on the
+live ISO you can `tail -f` the log from Alt+F2. The installed system keeps
+both halves: `/var/log/fxn-install-live.log`, and the user stage's log in
+`~/.cache/fxn/install.log`.
+
+It asks for hostname, user, password, timezone, disk and extra groups, shows
+the plan, and only then touches the disk. Two disk modes:
+
+| mode | layout |
 |---|---|
-| `--list`    | print the plan and exit |
-| `--no-aur`  | skip AUR packages (you lose the oh-my-posh prompt) |
-| `--no-chsh` | leave the login shell alone |
+| `wipe`   | erases one disk: 1G EFI at `/boot` + ext4 root. The USB you booted from is never offered |
+| `manual` | you partition first (`cfdisk`); pick an ESP and a root. Root is formatted, the ESP only if you say so — keep it for dual boot, and os-prober finds Windows |
 
-The desktop half — Hyprland, Quickshell, wallust — is **not** installed by
-`install.sh`. Install those packages (see [Requirements](#requirements)) and
-then run `./promote.sh deploy`.
+Then it pacstraps base + desktop + your groups (+ CPU microcode), sets up
+locale, users, sudo, GRUB (and NVIDIA early KMS when that group is on),
+copies the repo to `~/code/fxn-dots`, and runs `install/fxn.sh` and
+`install/desktop.sh` **as the new user** — so the result is the same as
+running them by hand later. Reboot into the fxn login screen: greetd runs
+`quickshell/fxn-greeter`, a copy of the hyprlock screen in the current
+theme and wallpaper.
+
+### an existing Arch install
+
+```sh
+install/fxn.sh                         # zsh + neovim
+install/desktop.sh --with apps,dev     # desktop + optional groups, then deploys dots
+```
+
+Both take `--list` to show the plan and change nothing, and `--no-aur`.
+Both are idempotent: `--needed` skips what is installed, `fxn.sh` copies any
+config it would overwrite to `~/.fxn-install-backup-<timestamp>/`, and
+`desktop.sh` deploys through `promote.sh`, which keeps its own backup.
+
+`fxn.sh` covers oh-my-zsh and its plugins, oh-my-posh, packer, copilot.vim,
+the LSP servers, and `~/.zshrc`, `ohmyposh/`, `fastfetch/`, `nvim/init.lua`
+(`--no-chsh` leaves the login shell alone).
+
+### package groups
+
+| group | file | |
+|---|---|---|
+| base    | `packages/base.txt`    | pacstrapped by `arch.sh` only |
+| desktop | `packages/desktop.txt`, `desktop.aur` | always — it is what the dots configure |
+| apps    | `packages/apps.txt`    | browsers, media, monitors |
+| dev     | `packages/dev.txt`     | go, python, node, docker (and the docker group) |
+| nvidia  | `packages/nvidia.txt`  | `nvidia-open`; preselected when an NVIDIA GPU is found |
+| extras  | `packages/extras.txt`  | discord, blender, ufw |
+
+One name per line, `#` comments. Every installer resolves the names against
+the repos before installing anything, so a stale name stops the run up front.
+
+### testing the installer
+
+Don't test `wipe` on hardware first. A QEMU VM with UEFI firmware works:
+
+```sh
+sudo pacman -S --needed qemu-desktop edk2-ovmf
+qemu-img create -f qcow2 vm.qcow2 40G
+cp /usr/share/edk2/x64/OVMF_VARS.4m.fd vm-vars.fd   # writable: GRUB adds a boot entry
+qemu-system-x86_64 -enable-kvm -m 8G -smp 4 -cpu host \
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd \
+  -drive if=pflash,format=raw,file=vm-vars.fd \
+  -cdrom install/out/fxn-arch-*.iso -drive file=vm.qcow2,if=virtio
+```
 
 ## pipeline
 
@@ -110,16 +201,17 @@ Auto takes its colors from whatever wallpaper you choose, via wallust. The four 
 ## Requirements
 
 ```sh
-sudo pacman -S --needed quickshell gum swww rsync jq \
+sudo pacman -S --needed quickshell gum awww rsync jq \
                         hypridle hyprlock cliphist wl-clipboard \
-                        brightnessctl grim slurp swappy \
+                        brightnessctl grim slurp swappy upower \
                         python imagemagick curl
 ```
 
 `qalc` (from `libqalculate`) is optional
 
-The zsh and neovim packages are handled by `./install.sh` instead — run
-`./install.sh --list` to see that list.
+These are all in `install/packages/desktop.txt`; `install/desktop.sh` installs
+them. The zsh and neovim packages are handled by `install/fxn.sh` — run
+`install/fxn.sh --list` to see that list.
 
 ### what PRESERVE and GENERATED actually do
 
@@ -141,9 +233,11 @@ files wallust rewrites on every theme change: `hypr/theme/colors.conf`,
 `hypr/theme/roles.conf`, `quickshell/fxn/theme.json`.
 
 `GENERATED` holds `quickshell/fxn/settings.json` plus `nvim/pack` and
-`nvim/plugin` — the plugin trees `install.sh` and packer create. Without those
+`nvim/plugin` — the plugin trees `install/fxn.sh` and packer create. Without those
 two entries the `nvim` component ships a lone `init.lua` and a deploy would
 delete copilot.vim (45M) along with `plugin/packer_compiled.lua`.
+`kitty/theme.conf` is there for the same reason as the wallust files: it is
+rewritten on every theme change, and shipping it would reset the colours.
 
 ### monitors
 
@@ -158,15 +252,16 @@ computed against that.
 
 ### not managed by promote.sh
 
-Two of wallust's four targets belong to apps this repo does not manage, and
-they are deliberately absent from the config tree:
+One of wallust's four targets belongs to an app this repo does not manage,
+and is deliberately absent from the config tree:
 
 | file | owner |
 |---|---|
 | `~/.config/cava/config` | wallust (`wallust.toml`, `cava.target`) |
-| `~/.config/kitty/theme.conf` | wallust (`wallust.toml`, `kitty.target`) |
 
-wallust rewrites both on every theme change, so there is nothing here to
-promote. Do **not** add either as a component without first putting the
-generated file in `GENERATED` — a deploy would otherwise overwrite the live
-colours with a stale copy.
+wallust rewrites it on every theme change, so there is nothing here to
+promote. Do **not** add cava as a component without first putting
+`cava/config` in `GENERATED` — a deploy would otherwise overwrite the live
+colours with a stale copy. kitty is the worked example: `kitty/kitty.conf` is
+a component, and `kitty/theme.conf` (wallust and fxn-theme write it) is in
+`GENERATED`.

@@ -79,6 +79,9 @@ apply() {
     "$config/hypr/bin/fxn-theme" auto >/dev/null
   fi
 
+  # The login screen mirrors the lock screen: same wallpaper, same theme.
+  "$config/hypr/bin/fxn-greeter-sync" 2>/dev/null || true
+
   # Kitty picks up its theme file only when told to.
   if command -v kitten >/dev/null && pgrep -x kitty >/dev/null 2>&1; then
     kitten @ --to "unix:/tmp/kitty-$USER" set-colors --all --configured \

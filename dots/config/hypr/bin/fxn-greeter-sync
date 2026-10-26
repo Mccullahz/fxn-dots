@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Publish the login screen and what it shows.
+#
+#   fxn-greeter-sync            → /var/lib/fxn-greeter
+#   fxn-greeter-sync --to DIR   anywhere else (a preview, say)
+#
+# greetd runs the greeter as the `greeter` user, which cannot read your
+# home, so the greeter's QML, the theme, the wallpaper and hyprlock's
+# status line are copied somewhere it can. install/desktop.sh creates
+# /var/lib/fxn-greeter owned by you; without it this does nothing.
+#
+# Runs on every wallpaper or theme change (wallpaper.sh) and once per
+# login (70-autostart.conf), which also picks up a freshly deployed
+# greeter.
+set -euo pipefail
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/fxn/wallpaper"
+dest=/var/lib/fxn-greeter
+
+case "${1:-}" in
+  --to) dest=${2:?--to needs a directory}; mkdir -p "$dest" ;;
+  "")   ;;
+  *)    printf 'usage: %s [--to DIR]\n' "${0##*/}" >&2; exit 1 ;;
+esac
+
+[[ -d $dest ]] || exit 0
+[[ -w $dest ]] || { printf '%s: %s is not writable\n' "${0##*/}" "$dest" >&2; exit 1; }
+
+publish() {  # src name mode — replaced atomically, the greeter may be reading
+  install -m "$3" "$1" "$dest/.$2.tmp"
+  mv -f "$dest/.$2.tmp" "$dest/$2"
+}
+
+rsync -a --delete --chmod=D755,F644 "$config/quickshell/fxn-greeter/" "$dest/greeter/"
+
+publish "$config/quickshell/fxn/theme.json" theme.json 644
+publish "$config/hypr/bin/lock-status.sh" lock-status.sh 755
+printf '%s\n' "$USER" > "$dest/.user.tmp" && mv -f "$dest/.user.tmp" "$dest/user"
+
+# Only the monitor lines: the rest of the file uses variables the
+# greeter's Hyprland never defines.
+grep -E '^[[:space:]]*monitor[[:space:]]*=' "$config/hypr/conf.d/10-monitors.conf" \
+  > "$dest/.monitors.conf.tmp" 2>/dev/null || true
+mv -f "$dest/.monitors.conf.tmp" "$dest/monitors.conf"
+
+# hyprlock's background: the current wallpaper, else one of the theme's
+# own, else none (the greeter falls back to the theme's background).
+wall=""
+[[ -e $cache/current ]] && wall=$(readlink -f "$cache/current")
+if [[ -z $wall ]]; then
+  theme=$(jq -r '.name // "auto"' "$config/quickshell/fxn/theme.json" 2>/dev/null || echo auto)
+  [[ $theme != auto ]] &&
+    wall=$("$config/hypr/bin/fxn-walls" list "$theme" 2>/dev/null | head -n1 || true)
+fi
+if [[ -n $wall && -f $wall ]]; then
+  cmp -s "$wall" "$dest/wallpaper" 2>/dev/null || publish "$wall" wallpaper 644
+else
+  rm -f "$dest/wallpaper"
+fi

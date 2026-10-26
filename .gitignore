@@ -12,3 +12,6 @@ promote.json
 
 # Generated at runtime by the shell; excluded from promotion too.
 qsplayground/config/quickshell/fxn/settings.json
+
+# ISOs built by install/usb.sh
+install/out/

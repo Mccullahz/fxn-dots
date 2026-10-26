@@ -97,21 +97,26 @@ install_aur() {
 
 # ─── services ────────────────────────────────────────────────
 #
-# enable, never --now: starting sddm from inside a running session would
-# put a second greeter on top of it. Everything here takes effect on the
+# enable, never --now: starting greetd from inside a running session would
+# put a second session on top of it. Everything here takes effect on the
 # next boot.
 enable_services() {
   ui_step "Services"
-  local -a units=(NetworkManager.service bluetooth.service sddm.service)
+  local -a units=(NetworkManager.service bluetooth.service greetd.service)
   [[ " ${groups[*]} " == *" dev "* ]] && units+=(docker.service)
 
-  # sddm is a display manager; if another one already owns
-  # display-manager.service, enabling sddm would fail. Leave it alone.
+  # greetd is a display manager; if another one already owns
+  # display-manager.service, enabling greetd would fail. sddm was this
+  # installer's choice before greetd, so that one is swapped out; any
+  # other is left alone.
   local dm
   dm=$(readlink /etc/systemd/system/display-manager.service 2>/dev/null || true)
-  if [[ -n $dm && $dm != */sddm.service ]]; then
-    ui_warn "display manager is already $(basename "$dm") — not switching to sddm"
-    units=("${units[@]/sddm.service}")
+  if [[ $dm == */sddm.service ]]; then
+    sudo systemctl disable sddm.service >/dev/null 2>&1 &&
+      ui_ok "sddm.service disabled — greetd replaces it"
+  elif [[ -n $dm && $dm != */greetd.service ]]; then
+    ui_warn "display manager is already $(basename "$dm") — not switching to greetd"
+    units=("${units[@]/greetd.service}")
   fi
 
   local u
@@ -126,7 +131,106 @@ enable_services() {
   fi
 
   # PipeWire and WirePlumber are socket-activated per user by their
-  # package presets; nothing to enable.
+  # package presets, and upower by D-Bus; nothing to enable.
+}
+
+# ─── login ───────────────────────────────────────────────────
+#
+# The login screen is the lock screen: quickshell/fxn-greeter redraws
+# hyprlock.conf for greetd. greetd runs it as the `greeter` user inside
+# a bare Hyprland (fxn-greeter/hyprland.conf), and that user cannot read
+# your home, so hypr/bin/fxn-greeter-sync publishes the greeter, theme
+# and wallpaper to $GREETER_DIR — owned by you, readable by everyone.
+readonly GREETD_CONF=/etc/greetd/config.toml
+readonly GREETD_MARK="# written by fxn install/desktop.sh"
+readonly GREETER_DIR=/var/lib/fxn-greeter
+
+configure_greetd() {
+  ui_step "Login screen"
+  if [[ ! -d /etc/greetd ]]; then
+    ui_warn "greetd is not installed — skipping"
+    return
+  fi
+  sudo install -d -m 755 -o "$USER" -g "$(id -gn)" "$GREETER_DIR"
+  # The greeter's own corner: it remembers who logged in last. Its home
+  # is /, read-only, so this is the one place it can write.
+  if getent passwd greeter >/dev/null; then
+    sudo install -d -m 755 -o greeter -g greeter "$GREETER_DIR/state"
+  fi
+
+  # Keep whatever was there first, once; our own file is just rewritten.
+  if [[ -f $GREETD_CONF ]] && ! grep -qF "$GREETD_MARK" "$GREETD_CONF"; then
+    sudo cp "$GREETD_CONF" "$GREETD_CONF.fxn-orig"
+    ui_ok "kept the original as $GREETD_CONF.fxn-orig"
+  fi
+  sudo tee "$GREETD_CONF" >/dev/null <<EOF
+$GREETD_MARK — re-run it to regenerate.
+
+[terminal]
+vt = 1
+
+[default_session]
+command = "start-hyprland -- -c $GREETER_DIR/greeter/hyprland.conf"
+user = "greeter"
+EOF
+  ui_ok "greetd → fxn-greeter (published to $GREETER_DIR)"
+}
+
+# After the deploy, so the greeter and the sync script are in ~/.config.
+publish_greeter() {
+  local sync="$HOME/.config/hypr/bin/fxn-greeter-sync"
+  [[ -d $GREETER_DIR && -x $sync ]] || return 0
+  "$sync" && ui_ok "login screen published" ||
+    ui_warn "could not publish the login screen — run $sync"
+}
+
+# ─── machine quirks ──────────────────────────────────────────
+#
+# Each one matches on hardware, so it only lands where it is needed.
+has_pci() {  # vendor device
+  local dev
+  for dev in /sys/bus/pci/devices/*; do
+    [[ $(<"$dev/vendor") == "$1" && $(<"$dev/device") == "$2" ]] && return 0
+  done
+  return 1
+}
+
+machine_quirks() {
+  ui_step "Machine quirks"
+  local any=false
+
+  # 2016–17 MacBook Pros (MacBookPro13,x / 14,x), told apart by their
+  # Apple S3X NVMe controller. S3 ("deep") suspend never resumes on
+  # them — black screen, hard reset — so suspend uses s2idle instead,
+  # which skips the firmware's S3 path. The controller also does not
+  # come back from D3cold, so that stays off too.
+  if has_pci 0x106b 0x2003; then
+    local sleep_conf=/etc/systemd/sleep.conf.d/90-fxn-s2idle.conf
+    sudo install -d /etc/systemd/sleep.conf.d
+    sudo tee "$sleep_conf" >/dev/null <<'EOF'
+# S3 suspend never resumes on 2016–17 MacBook Pros; s2idle does.
+# Written by fxn install/desktop.sh.
+[Sleep]
+MemorySleepMode=s2idle
+EOF
+    ui_ok "MacBook: suspend uses s2idle ($sleep_conf)"
+
+    local rule=/etc/udev/rules.d/90-fxn-apple-nvme-d3cold.rules
+    sudo tee "$rule" >/dev/null <<'EOF'
+# Apple S3X NVMe (MacBookPro13,x / 14,x) never resumes from D3cold,
+# which turns every suspend into a hard reset. Written by fxn install/desktop.sh.
+ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x106b", ATTR{device}=="0x2003", ATTR{d3cold_allowed}="0"
+EOF
+    # Apply it now as well, so the next suspend works without a reboot.
+    # No udevd in arch.sh's chroot; there the rule waits for first boot.
+    { sudo udevadm control --reload &&
+      sudo udevadm trigger --action=add --subsystem-match=pci \
+        --attr-match=vendor=0x106b --attr-match=device=0x2003; } 2>/dev/null || true
+    ui_ok "Apple NVMe: D3cold off ($rule)"
+    any=true
+  fi
+
+  $any || ui_ok "none for this machine"
 }
 
 # ─── dots ────────────────────────────────────────────────────
@@ -159,7 +263,7 @@ show_list() {
   ui_step "AUR"
   printf '    %s\n' "${aur[@]}"
   ui_step "Services enabled"
-  printf '    %s\n' NetworkManager bluetooth sddm
+  printf '    %s\n' NetworkManager bluetooth greetd
   [[ " ${groups[*]} " == *" dev "* ]] && printf '    %s\n' docker
   ui_step "Then"
   printf '    %s\n' "./promote.sh deploy  — dots/ → ~/.config"
@@ -176,11 +280,14 @@ main() {
   install_official
   install_aur
   enable_services
+  configure_greetd
+  machine_quirks
   user_dirs
   deploy
+  publish_greeter
 
   ui_step "Done"
-  ui_ok "reboot (or log out) and pick Hyprland in sddm"
+  ui_ok "reboot — the login screen is your lock screen"
   ui_say "monitors: write your layout in ~/.config/hypr/conf.d/10-monitors.conf"
 }
 

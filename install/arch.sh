@@ -327,7 +327,7 @@ finish() {
 
   ui_step "Done"
   ui_ok "installed. Remove the USB and reboot."
-  ui_say "Log in through sddm, pick Hyprland. Then:"
+  ui_say "You boot to the fxn login screen. Then:"
   ui_say "  · write your monitors into ~/.config/hypr/conf.d/10-monitors.conf"
   ui_say "  · :Copilot setup in nvim, once"
   if ui_confirm "Reboot now?"; then

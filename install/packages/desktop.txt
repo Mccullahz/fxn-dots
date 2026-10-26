@@ -16,7 +16,7 @@ qt5ct
 qt6ct
 kvantum
 nwg-look
-sddm
+greetd              # runs quickshell/fxn-greeter, the login screen
 
 # the shell (qs -c fxn) and what its services shell out to
 quickshell
@@ -32,6 +32,7 @@ slurp
 swappy
 python
 util-linux          # rfkill — airplane-mode.sh
+upower              # Services/Battery.qml — the bar's battery readout
 
 # audio, bluetooth, network
 pipewire
