@@ -21,8 +21,8 @@ readonly BACKUPS="$ROOT/.backups"
 readonly STATE="$ROOT/promote.json"
 
 readonly -a PRESERVE=(
-  "hypr/conf.d/99-local.conf"
-  "hypr/conf.d/10-monitors.conf"
+  "hypr/conf.d/99-local.lua"
+  "hypr/conf.d/10-monitors.lua"
   "hypr/theme/colors.conf"
   "hypr/theme/roles.conf"
   "quickshell/fxn/theme.json"
@@ -433,8 +433,8 @@ cmd_stage() {
 #  Installing onto the live system
 #
 #  Hyprland reloads the moment a file it sourced changes. Writing a tree
-#  in place — which is what rsync does — let it parse hyprland.conf
-#  before the files hyprland.conf sources had landed. That is how a
+#  in place — which is what rsync does — let it parse hyprland.lua
+#  before the files hyprland.lua loads had landed. That is how a
 #  rollback left the running compositor with no keybinds while every
 #  file on disk was correct.
 #
@@ -565,7 +565,7 @@ verify_hypr_tree() {
   out=$(env -i HOME="$fake" XDG_CONFIG_HOME="$fake/.config" \
           XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
           PATH=/usr/bin:/bin \
-          timeout 60 Hyprland --verify-config -c "$fake/.config/hypr/hyprland.conf" 2>&1) || true
+          timeout 60 Hyprland --verify-config -c "$fake/.config/hypr/hyprland.lua" 2>&1) || true
   rm -rf -- "$fake"
   if printf '%s' "$out" | grep -q 'config ok'; then
     return 0
@@ -607,7 +607,7 @@ reload_and_check() {
 # which call into Quickshell — have nothing to talk to.
 shell_handoff_note() {
   local dir=$1 wants_qs=0 legacy=0 qs=0
-  if grep -rqs 'qs -c ' "$dir/hyprland.conf" "$dir/conf.d"; then wants_qs=1; fi
+  if grep -rqs 'qs -c ' "$dir/hyprland.lua" "$dir/conf.d"; then wants_qs=1; fi
   if pgrep -x waybar >/dev/null 2>&1 || pgrep -x swaync >/dev/null 2>&1; then legacy=1; fi
   if pgrep -x quickshell >/dev/null 2>&1 || pgrep -x qs >/dev/null 2>&1; then qs=1; fi
 

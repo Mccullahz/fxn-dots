@@ -35,10 +35,10 @@ status=0
 # ─── Hyprland ───────────────────────────────────────────────
 head_ "Hyprland config"
 out=$(sandboxed timeout 30 Hyprland --verify-config \
-        -c "$sandbox/.config/hypr/hyprland.conf" 2>&1 |
+        -c "$sandbox/.config/hypr/hyprland.lua" 2>&1 |
       sed -n '/Config parsing result/,$p')
 if printf '%s' "$out" | grep -q 'config ok'; then
-  green "hyprland.conf and every conf.d file parse"
+  green "hyprland.lua and every conf.d file parse"
 else
   red "config errors:"
   printf '%s\n' "$out" | grep -i 'error' | sort -u | head -20

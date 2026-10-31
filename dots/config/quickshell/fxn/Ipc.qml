@@ -10,7 +10,7 @@ import "root:/Services"
 
     qs -c fxn ipc call <target> <function> [args]
 
-    matching binds in conf.d/50-binds.conf
+    matching binds in conf.d/50-binds.lua
 */
 Item {
     id: root

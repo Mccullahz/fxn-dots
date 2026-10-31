@@ -138,7 +138,7 @@ enable_services() {
 #
 # The login screen is the lock screen: quickshell/fxn-greeter redraws
 # hyprlock.conf for greetd. greetd runs it as the `greeter` user inside
-# a bare Hyprland (fxn-greeter/hyprland.conf), and that user cannot read
+# a bare Hyprland (fxn-greeter/hyprland.lua), and that user cannot read
 # your home, so hypr/bin/fxn-greeter-sync publishes the greeter, theme
 # and wallpaper to $GREETER_DIR — owned by you, readable by everyone.
 readonly GREETD_CONF=/etc/greetd/config.toml
@@ -170,7 +170,7 @@ $GREETD_MARK — re-run it to regenerate.
 vt = 1
 
 [default_session]
-command = "start-hyprland -- -c $GREETER_DIR/greeter/hyprland.conf"
+command = "start-hyprland -- -c $GREETER_DIR/greeter/hyprland.lua"
 user = "greeter"
 EOF
   ui_ok "greetd → fxn-greeter (published to $GREETER_DIR)"
@@ -288,7 +288,7 @@ main() {
 
   ui_step "Done"
   ui_ok "reboot — the login screen is your lock screen"
-  ui_say "monitors: write your layout in ~/.config/hypr/conf.d/10-monitors.conf"
+  ui_say "monitors: write your layout in ~/.config/hypr/conf.d/10-monitors.lua"
 }
 
 main

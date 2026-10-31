@@ -14,11 +14,11 @@ case "${1:-}" in
     outputs=$(hyprctl -j monitors | jq -r --arg i "$internal" \
       '[.[] | select(.name != $i)] | length')
     if [[ $outputs -gt 0 ]]; then
-      hyprctl keyword monitor "$internal, disable"
+      hyprctl eval "hl.monitor({ output = \"$internal\", disabled = true })"
     fi
     ;;
   open)
-    hyprctl keyword monitor "$internal, preferred, auto, 1"
+    hyprctl eval "hl.monitor({ output = \"$internal\", mode = \"preferred\", position = \"auto\", scale = 1 })"
     ;;
   *)
     printf 'usage: %s {close|open}\n' "${0##*/}" >&2

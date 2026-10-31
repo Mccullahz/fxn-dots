@@ -149,8 +149,8 @@ Before anything is swapped, deploy parses the new Hyprland config with `Hyprland
 
 We are avoiding touching:
 ```
-hypr/conf.d/99-local.conf        your own overrides
-hypr/conf.d/10-monitors.conf     machine's displays
+hypr/conf.d/99-local.lua         your own overrides
+hypr/conf.d/10-monitors.lua      machine's displays
 hypr/theme/colors.conf           written by wallust or fxn-theme
 hypr/theme/roles.conf            written by fxn-theme
 quickshell/fxn/theme.json        written by fxn-theme
@@ -228,7 +228,7 @@ protected from being *overwritten* on a machine that already has one — which
 is what makes `dots/` the seed for a fresh install, and why the copy in
 `dots/` still has to be correct.
 
-`PRESERVE` holds `hypr/conf.d/10-monitors.conf` (per-machine displays) and the
+`PRESERVE` holds `hypr/conf.d/10-monitors.lua` (per-machine displays) and the
 files wallust rewrites on every theme change: `hypr/theme/colors.conf`,
 `hypr/theme/roles.conf`, `quickshell/fxn/theme.json`.
 
@@ -241,13 +241,13 @@ rewritten on every theme change, and shipping it would reset the colours.
 
 ### monitors
 
-Write your display layout in `conf.d/10-monitors.conf` by hand. **nwg-displays
-saves to `~/.config/hypr/monitors.conf`, which this config never sources** —
+Write your display layout in `conf.d/10-monitors.lua` by hand. **nwg-displays
+saves to `~/.config/hypr/monitors.lua`, which this config never loads** —
 its output is silently ignored, so the GUI appears to work and changes nothing.
 Use it to read coordinates off, then copy them in yourself.
 
 Remember that a rotated output swaps its logical dimensions: a 1920x1080 panel
-at `transform, 1` occupies 1080x1920, and every neighbouring position has to be
+at `transform = 1` occupies 1080x1920, and every neighbouring position has to be
 computed against that.
 
 ### not managed by promote.sh

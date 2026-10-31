@@ -10,8 +10,8 @@ import "root:/Widgets"
 /*!
     Keybind cheat sheet — the KeyHints.sh replacement.
 
-    Reads conf.d/50-binds.conf directly rather than asking hyprctl,
-    because the trailing `# comment` on each bind is the only place
+    Reads conf.d/50-binds.lua directly rather than asking hyprctl,
+    because the trailing `-- comment` on each bind is the only place
     the human-readable description lives. Section headers in the file
     become the groups here, so reorganising the config reorganises
     this page for free.
@@ -51,15 +51,15 @@ PanelWindow {
 
     FileView {
         id: binds
-        path: Paths.hyprConfig + "/conf.d/50-binds.conf"
+        path: Paths.hyprConfig + "/conf.d/50-binds.lua"
         printErrors: false
         onLoaded: root.parse(text())
         onLoadFailed: root.groups = []
     }
 
     /*!
-        Pull `bind... = MODS, KEY, ... # description` out of the config,
-        bucketed by the `# ─── Section ───` headers above them.
+        Pull `bind("MODS + KEY", dispatcher) -- description` out of the
+        config, bucketed by the `-- ─── Section ───` headers above them.
     */
     function parse(text: string): void {
         const out = [];
@@ -68,26 +68,22 @@ PanelWindow {
         for (const raw of text.split("\n")) {
             const line = raw.trim();
 
-            const header = line.match(/^#\s*─+\s*(.+?)\s*─+/);
+            const header = line.match(/^(?:#|--)\s*─+\s*(.+?)\s*─+/);
             if (header) {
                 current = { name: header[1], binds: [] };
                 out.push(current);
                 continue;
             }
 
-            const bind = line.match(/^bind[elmrtn]*\s*=\s*(.*)$/);
+            const bind = line.match(/^(?:hl\.)?bind\(\s*"([^"]+)"\s*,\s*(.*)$/);
             if (!bind) continue;
 
-            const [body, ...commentParts] = bind[1].split("#");
-            const description = commentParts.join("#").trim();
-            const fields = body.split(",").map(s => s.trim());
-            if (fields.length < 2) continue;
+            const comment = bind[2].indexOf(" --");
+            const body = comment < 0 ? bind[2] : bind[2].slice(0, comment);
+            const description = comment < 0 ? "" : bind[2].slice(comment + 3).trim();
 
-            const mods = fields[0]
-                .replace(/\$mainMod/g, "SUPER")
-                .split(/\s+/)
-                .filter(s => s);
-            const key = root.prettyKey(fields[1]);
+            const parts = bind[1].split("+").map(s => s.trim()).filter(s => s);
+            const key = root.prettyKey(parts.pop() ?? "");
             if (!key) continue;
 
             if (!current) {
@@ -96,9 +92,9 @@ PanelWindow {
             }
 
             current.binds.push({
-                combo: [...mods, key],
+                combo: [...parts, key],
                 // Fall back to the dispatcher when there is no comment.
-                description: description || fields.slice(2).join(", ")
+                description: description || body.trim().replace(/\)\s*$/, "")
             });
         }
 
@@ -300,7 +296,7 @@ PanelWindow {
                 Layout.fillWidth: true
                 visible: root.filtered.length === 0
                 text: root.groups.length === 0
-                    ? "Could not read 50-binds.conf"
+                    ? "Could not read 50-binds.lua"
                     : "No binds match"
                 horizontalAlignment: Text.AlignHCenter
                 color: Theme.faint

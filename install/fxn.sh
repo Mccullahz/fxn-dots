@@ -283,7 +283,7 @@ post_notes() {
   echo
   info "What is NOT covered by this script:"
   echo "    · Hyprland / Quickshell / wallust — use install/desktop.sh"
-  echo "    · ~/.config/hypr/conf.d/10-monitors.conf is machine-specific"
+  echo "    · ~/.config/hypr/conf.d/10-monitors.lua is machine-specific"
   echo "      and intentionally never deployed; write your layout there"
   echo "    · Copilot needs ':Copilot setup' once, interactively"
   echo

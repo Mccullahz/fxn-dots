@@ -15,6 +15,12 @@ Rectangle {
 
     readonly property string windowClass: root.toplevel?.lastIpcObject?.class ?? ""
     readonly property string windowTitle: root.toplevel?.title ?? ""
+    // Hyprland window selector. Quickshell may report the address
+    // without its 0x prefix; the selector needs it.
+    readonly property string selector: {
+        const address = root.toplevel?.address ?? "";
+        return "address:" + (address.startsWith("0x") ? address : "0x" + address);
+    }
 
     /*! Match the window class to a desktop entry so we get a real icon. */
     readonly property string iconName: {
@@ -56,7 +62,7 @@ Rectangle {
             size: 18
             iconSize: Theme.fontSizeXs
             iconColor: Theme.faint
-            onClicked: Hyprland.dispatch(`closewindow address:${root.toplevel.address}`)
+            onClicked: Hyprland.dispatch(`hl.dsp.window.close({ window = "${root.selector}" })`)
         }
     }
 
@@ -64,7 +70,7 @@ Rectangle {
         radius: root.radius
         z: -1
         onClicked: {
-            Hyprland.dispatch(`focuswindow address:${root.toplevel.address}`);
+            Hyprland.dispatch(`hl.dsp.focus({ window = "${root.selector}" })`);
             root.activated();
         }
     }

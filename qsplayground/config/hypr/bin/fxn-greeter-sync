@@ -10,7 +10,7 @@
 # /var/lib/fxn-greeter owned by you; without it this does nothing.
 #
 # Runs on every wallpaper or theme change (wallpaper.sh) and once per
-# login (70-autostart.conf), which also picks up a freshly deployed
+# login (70-autostart.lua), which also picks up a freshly deployed
 # greeter.
 set -euo pipefail
 
@@ -38,11 +38,14 @@ publish "$config/quickshell/fxn/theme.json" theme.json 644
 publish "$config/hypr/bin/lock-status.sh" lock-status.sh 755
 printf '%s\n' "$USER" > "$dest/.user.tmp" && mv -f "$dest/.user.tmp" "$dest/user"
 
-# Only the monitor lines: the rest of the file uses variables the
-# greeter's Hyprland never defines.
-grep -E '^[[:space:]]*monitor[[:space:]]*=' "$config/hypr/conf.d/10-monitors.conf" \
-  > "$dest/.monitors.conf.tmp" 2>/dev/null || true
-mv -f "$dest/.monitors.conf.tmp" "$dest/monitors.conf"
+# The display layout. 10-monitors.lua is kept to literal hl.monitor
+# calls so it runs as-is in the greeter's Hyprland; an empty file when
+# it is missing, so the greeter falls back to Hyprland's defaults.
+cp -f "$config/hypr/conf.d/10-monitors.lua" "$dest/.monitors.lua.tmp" 2>/dev/null ||
+  : > "$dest/.monitors.lua.tmp"
+chmod 644 "$dest/.monitors.lua.tmp"
+mv -f "$dest/.monitors.lua.tmp" "$dest/monitors.lua"
+rm -f "$dest/monitors.conf"
 
 # hyprlock's background: the current wallpaper, else one of the theme's
 # own, else none (the greeter falls back to the theme's background).

@@ -79,7 +79,7 @@ PanelWindow {
         Keys.onPressed: event => {
             // 1-9 jump straight to a workspace.
             if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9) {
-                Hyprland.dispatch(`workspace ${event.key - Qt.Key_0}`);
+                Hyprland.dispatch(`hl.dsp.focus({ workspace = ${event.key - Qt.Key_0} })`);
                 root.close();
                 event.accepted = true;
             }
@@ -186,7 +186,7 @@ PanelWindow {
                             radius: card.radius
                             z: -1
                             onClicked: {
-                                Hyprland.dispatch(`workspace ${card.modelData.id}`);
+                                Hyprland.dispatch(`hl.dsp.focus({ workspace = ${card.modelData.id} })`);
                                 root.close();
                             }
                         }

@@ -2,7 +2,7 @@
 # Desktop magnifier, bound to SUPER+ALT+scroll.
 set -euo pipefail
 
-factor=$(hyprctl -j getoption cursor:zoom_factor | jq -r '.float')
+factor=$(hyprctl -j getoption cursor.zoom_factor | jq -r '.float')
 
 case "${1:-in}" in
   in)    new=$(awk -v f="$factor" 'BEGIN { f = (f < 1 ? 1 : f); print (f * 1.4 > 10 ? 10 : f * 1.4) }') ;;
@@ -11,4 +11,4 @@ case "${1:-in}" in
   *)     exit 1 ;;
 esac
 
-hyprctl keyword cursor:zoom_factor "$new"
+hyprctl eval "hl.config({ cursor = { zoom_factor = $new } })"
