@@ -2,6 +2,11 @@
 
 A Hyprland config built with [Quickshell](https://quickshell.org).
 
+Requires Hyprland 0.57 or later: the config is Lua (`hypr/hyprland.lua` +
+`hypr/conf.d/*.lua`). 0.57 removed the hyprlang parser, so `hyprland.conf` is
+no longer read, `hyprctl keyword` is gone, and `hyprctl dispatch` takes a Lua
+expression (`hyprctl dispatch 'hl.dsp.focus({ workspace = 2 })'`).
+
 ```
 qsplayground/  edit, test, break things
 dots/          the promoted, known-good copy
@@ -149,8 +154,8 @@ Before anything is swapped, deploy parses the new Hyprland config with `Hyprland
 
 We are avoiding touching:
 ```
-hypr/conf.d/99-local.conf        your own overrides
-hypr/conf.d/10-monitors.conf     machine's displays
+hypr/conf.d/99-local.lua         your own overrides
+hypr/conf.d/10-monitors.lua      machine's displays
 hypr/theme/colors.conf           written by wallust or fxn-theme
 hypr/theme/roles.conf            written by fxn-theme
 quickshell/fxn/theme.json        written by fxn-theme
@@ -228,9 +233,16 @@ protected from being *overwritten* on a machine that already has one — which
 is what makes `dots/` the seed for a fresh install, and why the copy in
 `dots/` still has to be correct.
 
-`PRESERVE` holds `hypr/conf.d/10-monitors.conf` (per-machine displays) and the
+`PRESERVE` holds `hypr/conf.d/10-monitors.lua` (per-machine displays) and the
 files wallust rewrites on every theme change: `hypr/theme/colors.conf`,
-`hypr/theme/roles.conf`, `quickshell/fxn/theme.json`.
+`hypr/theme/roles.conf`, `quickshell/fxn/theme.json`. The theme files stay in
+hyprlang `$name = value` form because hyprlock still sources them;
+`hyprland.lua` reads them with `fxn.read_vars`.
+
+A system last deployed before the Lua migration has only
+`conf.d/10-monitors.conf` / `99-local.conf`. Deploy converts those once into
+the `.lua` versions (monitor lines become `hl.monitor` calls; anything else is
+left as a `-- TODO port:` comment) so another machine's layout never lands.
 
 `GENERATED` holds `quickshell/fxn/settings.json` plus `nvim/pack` and
 `nvim/plugin` — the plugin trees `install/fxn.sh` and packer create. Without those
@@ -241,13 +253,15 @@ rewritten on every theme change, and shipping it would reset the colours.
 
 ### monitors
 
-Write your display layout in `conf.d/10-monitors.conf` by hand. **nwg-displays
-saves to `~/.config/hypr/monitors.conf`, which this config never sources** —
+Write your display layout in `conf.d/10-monitors.lua` by hand, as plain
+`hl.monitor({ ... })` calls — the greeter loads a copy of this file on its own,
+so it must not reference the `fxn` table. **nwg-displays
+saves to `~/.config/hypr/monitors.conf`, which this config never loads** —
 its output is silently ignored, so the GUI appears to work and changes nothing.
 Use it to read coordinates off, then copy them in yourself.
 
 Remember that a rotated output swaps its logical dimensions: a 1920x1080 panel
-at `transform, 1` occupies 1080x1920, and every neighbouring position has to be
+at `transform = 1` occupies 1080x1920, and every neighbouring position has to be
 computed against that.
 
 ### not managed by promote.sh

@@ -21,8 +21,8 @@ readonly BACKUPS="$ROOT/.backups"
 readonly STATE="$ROOT/promote.json"
 
 readonly -a PRESERVE=(
-  "hypr/conf.d/99-local.conf"
-  "hypr/conf.d/10-monitors.conf"
+  "hypr/conf.d/99-local.lua"
+  "hypr/conf.d/10-monitors.lua"
   "hypr/theme/colors.conf"
   "hypr/theme/roles.conf"
   "quickshell/fxn/theme.json"
@@ -432,9 +432,9 @@ cmd_stage() {
 # ─────────────────────────────────────────────────────────────
 #  Installing onto the live system
 #
-#  Hyprland reloads the moment a file it sourced changes. Writing a tree
-#  in place — which is what rsync does — let it parse hyprland.conf
-#  before the files hyprland.conf sources had landed. That is how a
+#  Hyprland reloads the moment a file it loaded changes. Writing a tree
+#  in place — which is what rsync does — let it parse hyprland.lua
+#  before the files hyprland.lua loads had landed. That is how a
 #  rollback left the running compositor with no keybinds while every
 #  file on disk was correct.
 #
@@ -483,6 +483,69 @@ carry_over() {
     [[ -e "$target/$rel" ]] || continue
     mkdir -p -- "$(dirname -- "$cand/$rel")"
     cp -a -- "$target/$rel" "$cand/$rel"
+  done
+  if [[ $component == hypr ]]; then
+    migrate_legacy_hypr "$target" "$cand"
+  fi
+  return 0
+}
+
+# Hyprland 0.57 dropped hyprlang for Lua, so the preserved files moved
+# from conf.d/*.conf to conf.d/*.lua. A system last deployed before that
+# still has only the .conf versions; without this, carry_over would find
+# no .lua to keep and the shipped defaults — another machine's monitors —
+# would replace them. Convert once: `monitor =` lines become hl.monitor()
+# calls, comments carry over, anything else is kept commented out for
+# porting by hand.
+migrate_legacy_hypr() {
+  local target=$1 cand=$2 name
+  for name in 10-monitors 99-local; do
+    [[ -f $target/conf.d/$name.conf && ! -e $target/conf.d/$name.lua ]] || continue
+    python3 - "$target/conf.d/$name.conf" > "$cand/conf.d/$name.lua" <<'PY'
+import re, sys
+
+def lua_str(v):
+    return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+out = ["-- Converted from %s by promote.sh (Hyprland 0.57 Lua migration)." % sys.argv[1].rsplit("/", 1)[-1],
+       "-- Lines starting with `-- TODO port:` were not converted automatically.", ""]
+for raw in open(sys.argv[1], encoding="utf-8"):
+    line = raw.rstrip("\n")
+    body = line.strip()
+    if not body:
+        out.append("")
+        continue
+    if body.startswith("#"):
+        out.append("--" + body[1:])
+        continue
+    m = re.match(r"^monitor\s*=\s*(.*)$", body)
+    if m:
+        fields = [f.strip() for f in m.group(1).split("#", 1)[0].split(",")]
+        spec = ["output = " + lua_str(fields[0])]
+        if len(fields) > 1 and fields[1] == "disable":
+            spec.append("disabled = true")
+        else:
+            keys = ["mode", "position", "scale"]
+            for k, v in zip(keys, fields[1:4]):
+                if k == "scale" and re.fullmatch(r"[0-9.]+", v):
+                    spec.append("scale = " + v)
+                else:
+                    spec.append(k + " = " + lua_str(v))
+            rest = fields[4:]
+            for k, v in zip(rest[0::2], rest[1::2]):
+                v2 = v if re.fullmatch(r"-?[0-9.]+", v) else lua_str(v)
+                spec.append(k + " = " + v2)
+        out.append("hl.monitor({ " + ", ".join(spec) + " })")
+        continue
+    # The scratchpad rule now ships in 40-rules.lua.
+    if re.match(r"^workspace\s*=\s*special:scratch\s*,\s*on-created-empty", body):
+        out.append("-- (moved to 40-rules.lua) " + body)
+        continue
+    out.append("-- TODO port: " + body)
+    sys.stderr.write("    %s: %s\n" % (sys.argv[1].rsplit("/", 1)[-1], body))
+print("\n".join(out))
+PY
+    ui_warn "migrated conf.d/$name.conf → conf.d/$name.lua (check it)"
   done
   return 0
 }
@@ -565,13 +628,16 @@ verify_hypr_tree() {
   out=$(env -i HOME="$fake" XDG_CONFIG_HOME="$fake/.config" \
           XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
           PATH=/usr/bin:/bin \
-          timeout 60 Hyprland --verify-config -c "$fake/.config/hypr/hyprland.conf" 2>&1) || true
+          timeout 60 Hyprland --verify-config -c "$fake/.config/hypr/hyprland.lua" 2>&1) || true
   rm -rf -- "$fake"
   if printf '%s' "$out" | grep -q 'config ok'; then
     return 0
   fi
-  printf '%s\n' "$out" | sed -n '/Config parsing result/,$p' \
-    | grep -i 'error' | sed "s|$fake/.config/hypr/||g" | sort -u | head -20
+  # Lua errors don't contain the word "error" ("unknown config key …"),
+  # so print every line of the result rather than grepping for it.
+  printf '%s\n' "$out" | sed -n '/Config parsing result/,$p' | sed '1d' \
+    | grep -v '^[[:space:]]*$' | sed "s|$fake/.config/hypr/||g; s|$dir/||g" \
+    | sort -u | head -20
   return 1
 }
 
@@ -607,7 +673,7 @@ reload_and_check() {
 # which call into Quickshell — have nothing to talk to.
 shell_handoff_note() {
   local dir=$1 wants_qs=0 legacy=0 qs=0
-  if grep -rqs 'qs -c ' "$dir/hyprland.conf" "$dir/conf.d"; then wants_qs=1; fi
+  if grep -rqs 'qs -c ' "$dir/hyprland.lua" "$dir/conf.d"; then wants_qs=1; fi
   if pgrep -x waybar >/dev/null 2>&1 || pgrep -x swaync >/dev/null 2>&1; then legacy=1; fi
   if pgrep -x quickshell >/dev/null 2>&1 || pgrep -x qs >/dev/null 2>&1; then qs=1; fi
 

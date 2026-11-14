@@ -23,13 +23,15 @@ Writes, under $XDG_CONFIG_HOME:
 
 In auto mode wallust has already written colors.conf and kitty's theme, so
 only roles.conf and theme.json are touched. Every file is replaced
-atomically: Hyprland reloads the moment a sourced file changes and must
-never parse one half written.
+atomically so hyprlock never parses one half written. Hyprland's Lua
+config reads roles.conf itself and does not watch it, so it is told to
+reload once everything is in place.
 """
 
 import json
 import math
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -245,9 +247,23 @@ def publish(theme, roles, dark, *, full):
     if full:
         write_atomic(HYPR_THEME / "colors.conf", colors_conf(doc))
         write_atomic(KITTY_THEME, kitty_conf(doc))
+    reload_hyprland()
     # theme.json last: the shell repaints on it, and by then Hyprland's side
     # is already in place.
     write_atomic(THEME_JSON, json.dumps(doc, indent=2) + "\n")
+
+
+def reload_hyprland():
+    """Re-read the config so borders pick up the new roles. No-op outside
+    a Hyprland session (install, the QA sandbox, a tty)."""
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return
+    try:
+        subprocess.run(["hyprctl", "reload", "config-only"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       timeout=5, check=False)
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def cmd_auto():

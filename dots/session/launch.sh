@@ -92,4 +92,4 @@ echo
 info "CTRL+ALT+DELETE inside the nested window exits it"
 echo
 
-exec Hyprland -c "$sandbox/.config/hypr/hyprland.conf"
+exec Hyprland -c "$sandbox/.config/hypr/hyprland.lua"

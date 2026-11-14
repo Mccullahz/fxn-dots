@@ -15,7 +15,7 @@ Singleton {
         { id: "hibernate", icon: "󰋊", label: "Hibernate", confirm: false,
           cmd: ["systemctl", "hibernate"] },
         { id: "logout",    icon: "󰗽", label: "Log out",   confirm: true,
-          cmd: ["hyprctl", "dispatch", "exit", "0"] },
+          cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
         { id: "reboot",    icon: "󰜉", label: "Reboot",    confirm: true,
           cmd: ["systemctl", "reboot"] },
         { id: "poweroff",  icon: "󰐥", label: "Power",     confirm: true,

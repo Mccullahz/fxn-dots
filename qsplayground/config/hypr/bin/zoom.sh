@@ -11,4 +11,4 @@ case "${1:-in}" in
   *)     exit 1 ;;
 esac
 
-hyprctl keyword cursor:zoom_factor "$new"
+hyprctl eval "hl.config({ cursor = { zoom_factor = $new } })"

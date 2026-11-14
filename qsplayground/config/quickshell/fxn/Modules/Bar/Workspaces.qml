@@ -100,12 +100,12 @@ Item {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onClicked: mouse => {
                         if (mouse.button === Qt.RightButton)
-                            Hyprland.dispatch(`movetoworkspace ${pill.modelData.id}`);
+                            Hyprland.dispatch(`hl.dsp.window.move({ workspace = ${pill.modelData.id} })`);
                         else
-                            Hyprland.dispatch(`workspace ${pill.modelData.id}`);
+                            Hyprland.dispatch(`hl.dsp.focus({ workspace = ${pill.modelData.id} })`);
                     }
                     onWheel: wheel => Hyprland.dispatch(
-                        wheel.angleDelta.y > 0 ? "workspace e-1" : "workspace e+1")
+                        `hl.dsp.focus({ workspace = "${wheel.angleDelta.y > 0 ? "e-1" : "e+1"}" })`)
                 }
             }
         }
